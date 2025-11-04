@@ -154,6 +154,18 @@ class GenerateInsightsRequest(BaseModel):
     campaign_id: Optional[str] = None
     time_period: str = "week"  # day, week, month, all
 
+class BulkImportLeadsRequest(BaseModel):
+    leads: List[Dict[str, Any]]
+    campaign_id: Optional[str] = None
+
+class GoogleSheetsConnectRequest(BaseModel):
+    spreadsheet_url: str
+    
+class APIKeysUpdate(BaseModel):
+    perplexity_key: Optional[str] = None
+    openai_key: Optional[str] = None
+    gemini_key: Optional[str] = None
+
 # ============ AUTH HELPERS ============
 
 async def get_current_user(request: Request, session_token: Optional[str] = Cookie(None)) -> User:
