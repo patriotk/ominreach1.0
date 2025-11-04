@@ -1112,6 +1112,21 @@ const SettingsPage = () => {
             </small>
           </div>
 
+          <div className="form-group">
+            <label className="form-label">Resend API Key (Email Sending)</label>
+            <input
+              type="password"
+              placeholder="re_..."
+              value={apiKeys.resend}
+              onChange={(e) => setApiKeys({ ...apiKeys, resend: e.target.value })}
+              className="input"
+              data-testid="resend-key-input"
+            />
+            <small style={{ color: '#a0a0b0', display: 'block', marginTop: '0.5rem' }}>
+              Get your key from: <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>resend.com/api-keys</a>
+            </small>
+          </div>
+
           <button onClick={saveApiKeys} className="btn-primary" data-testid="save-api-keys-btn">
             💾 Save API Keys
           </button>
