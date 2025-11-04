@@ -634,6 +634,140 @@ async def get_insights(campaign_id: Optional[str] = None, current_user: User = D
     insights = await db.ai_insights.find(query).sort("generated_at", -1).limit(10).to_list(10)
     return [AIInsight(**i) for i in insights]
 
+# ============ GOOGLE SHEETS INTEGRATION ============
+
+@api_router.post("/integrations/google-sheets/connect")
+async def connect_google_sheets(request: GoogleSheetsConnectRequest, current_user: User = Depends(get_current_user)):
+    """
+    Connect Google Sheets for CRM sync
+    """
+    # Extract sheet ID from URL
+    import re
+    match = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', request.spreadsheet_url)
+    if not match:
+        raise HTTPException(status_code=400, detail="Invalid Google Sheets URL")
+    
+    sheet_id = match.group(1)
+    
+    # Store sheet connection
+    await db.integrations.update_one(
+        {"user_id": current_user.id, "type": "google_sheets"},
+        {"$set": {
+            "user_id": current_user.id,
+            "type": "google_sheets",
+            "sheet_id": sheet_id,
+            "sheet_url": request.spreadsheet_url,
+            "connected_at": datetime.now(timezone.utc),
+            "status": "connected"
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Google Sheets connected successfully", "sheet_id": sheet_id}
+
+@api_router.get("/integrations/google-sheets/status")
+async def get_google_sheets_status(current_user: User = Depends(get_current_user)):
+    """
+    Get Google Sheets connection status
+    """
+    integration = await db.integrations.find_one({
+        "user_id": current_user.id,
+        "type": "google_sheets"
+    })
+    
+    if integration:
+        return {
+            "connected": True,
+            "sheet_url": integration.get("sheet_url"),
+            "connected_at": integration.get("connected_at")
+        }
+    
+    return {"connected": False}
+
+@api_router.post("/integrations/google-sheets/sync")
+async def sync_google_sheets(current_user: User = Depends(get_current_user)):
+    """
+    Sync leads to Google Sheets
+    """
+    # Get sheet connection
+    integration = await db.integrations.find_one({
+        "user_id": current_user.id,
+        "type": "google_sheets"
+    })
+    
+    if not integration:
+        raise HTTPException(status_code=404, detail="Google Sheets not connected")
+    
+    # Get all leads
+    leads = await db.leads.find({"user_id": current_user.id}).to_list(1000)
+    
+    # In a real implementation, this would use Google Sheets API
+    # For now, we'll return a mock response
+    return {
+        "message": "Sync complete",
+        "synced_leads": len(leads),
+        "note": "Add Google Sheets API credentials to enable live sync"
+    }
+
+# ============ SETTINGS & API KEYS ============
+
+@api_router.get("/settings/integrations")
+async def get_integration_settings(current_user: User = Depends(get_current_user)):
+    """
+    Get integration status and settings
+    """
+    # Check which API keys are configured
+    perplexity_configured = bool(os.getenv("PERPLEXITY_API_KEY"))
+    emergent_llm_configured = bool(os.getenv("EMERGENT_LLM_KEY"))
+    
+    # Check Google Sheets
+    sheets_integration = await db.integrations.find_one({
+        "user_id": current_user.id,
+        "type": "google_sheets"
+    })
+    
+    # Check LinkedIn (mock for now)
+    linkedin_integration = await db.integrations.find_one({
+        "user_id": current_user.id,
+        "type": "linkedin"
+    })
+    
+    return {
+        "ai_models": {
+            "gpt5": {"enabled": emergent_llm_configured, "provider": "openai", "status": "ready" if emergent_llm_configured else "not_configured"},
+            "gemini": {"enabled": emergent_llm_configured, "provider": "google", "status": "ready" if emergent_llm_configured else "not_configured"},
+            "perplexity": {"enabled": perplexity_configured, "status": "ready" if perplexity_configured else "not_configured"}
+        },
+        "integrations": {
+            "google_sheets": {
+                "connected": bool(sheets_integration),
+                "status": sheets_integration.get("status") if sheets_integration else "not_connected"
+            },
+            "linkedin": {
+                "connected": bool(linkedin_integration),
+                "status": "mock_mode"
+            },
+            "email": {
+                "connected": False,
+                "status": "not_configured",
+                "note": "Email service pending configuration"
+            }
+        }
+    }
+
+@api_router.post("/settings/api-keys")
+async def update_api_keys(keys: APIKeysUpdate, current_user: User = Depends(get_current_user)):
+    """
+    Update API keys (admin only)
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    return {
+        "message": "API keys should be configured via environment variables",
+        "note": "For security, API keys are managed through .env file"
+    }
+
 # ============ MOCK OUTREACH (Email/LinkedIn) ============
 
 @api_router.post("/outreach/send")
