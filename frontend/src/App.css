@@ -677,6 +677,125 @@ body {
 
 /* ========== RESPONSIVE ========== */
 
+/* ========== SETTINGS PAGE ========== */
+
+.settings-section {
+  margin-bottom: 3rem;
+}
+
+.settings-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+}
+
+.integration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.integration-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+  transition: all 0.3s;
+}
+
+.integration-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(147, 197, 253, 0.3);
+}
+
+.integration-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.integration-header h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.3rem;
+  color: #ffffff;
+  margin: 0;
+}
+
+.integration-card p {
+  color: #a0a0b0;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.integration-info {
+  padding: 0.75rem;
+  background: rgba(147, 197, 253, 0.1);
+  border-radius: 8px;
+  color: #93c5fd;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.integration-warning {
+  padding: 0.75rem;
+  background: rgba(251, 146, 60, 0.1);
+  border-radius: 8px;
+  color: #fb923c;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.config-note {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.config-note h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  color: #ffffff;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.config-note ul {
+  list-style: none;
+  padding: 0;
+}
+
+.config-note li {
+  color: #a0a0b0;
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+  position: relative;
+  line-height: 1.7;
+}
+
+.config-note li:before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: #93c5fd;
+}
+
+.config-note code {
+  background: rgba(147, 197, 253, 0.15);
+  color: #93c5fd;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+textarea.input {
+  resize: vertical;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 768px) {
   .dashboard-layout {
     flex-direction: column;
