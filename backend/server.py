@@ -14,6 +14,7 @@ import httpx
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 from campaign_models import Campaign, MessageStep, MessageVariant, CampaignSchedule, CampaignMetrics, CampaignExecution
 from campaign_service import CampaignService
+import resend
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
