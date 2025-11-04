@@ -177,6 +177,42 @@ class GenerateMessageRequest(BaseModel):
     lead_id: str  # To use persona
     variant_name: str  # "Variant A" or "Variant B"
 
+class BulkGenerateMessagesRequest(BaseModel):
+    campaign_id: str
+    step_number: int
+    variant_name: str
+    lead_ids: List[str]  # Generate for multiple leads
+
+class AIAgentConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    campaign_id: Optional[str] = None
+    step_1_system_prompt: str = "You are an expert B2B sales copywriter for initial outreach. Create personalized, engaging first contact messages."
+    step_1_instructions: str = "Keep under 100 words. Establish relevance. End with soft question."
+    step_2_system_prompt: str = "You are an expert B2B follow-up specialist. Create helpful, value-focused messages."
+    step_2_instructions: str = "Reference first message. Share specific benefit. Include social proof or metric."
+    step_3_system_prompt: str = "You are an expert B2B closer. Create direct, respectful final touchpoints."
+    step_3_instructions: str = "Acknowledge silence. Provide clear CTA. Create appropriate urgency."
+    model_provider: str = "openai"  # openai or gemini
+    model_name: str = "gpt-5"
+    temperature: float = 0.7
+    max_tokens: int = 500
+
+class AIUsageLog(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    campaign_id: str
+    operation: str  # "generate_message", "generate_persona", "generate_insights"
+    provider: str  # openai, gemini, perplexity
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    estimated_cost: float
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class AddMessageVariantRequest(BaseModel):
     name: str
     subject: Optional[str] = None
