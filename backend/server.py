@@ -1019,6 +1019,8 @@ async def update_api_keys(keys: APIKeysUpdate, current_user: User = Depends(get_
         updates["openai_key"] = keys.openai_key
     if keys.gemini_key:
         updates["gemini_key"] = keys.gemini_key
+    if keys.resend_key:
+        updates["resend_key"] = keys.resend_key
     
     if updates:
         await db.integrations.update_one(
