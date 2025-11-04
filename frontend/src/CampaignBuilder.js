@@ -375,11 +375,282 @@ export const CampaignBuilder = () => {
   );
 };
 
-const StepsBuilder = ({ campaign, onAddStep, onUpdateVariant, onSaveStep }) => {
-  const steps = campaign.message_steps || [];
+const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, editingCampaign, setEditingCampaign }) => {
+  const productInfo = campaignEdits.product_info || {};
 
+  const updateProductInfo = (field, value) => {
+    setCampaignEdits({
+      ...campaignEdits,
+      product_info: {
+        ...productInfo,
+        [field]: value
+      }
+    });
+  };
+
+  return (
+    <div className="product-info-editor">
+      <div className="editor-header">
+        <h3>Campaign & Product Information</h3>
+        <button onClick={() => setEditingCampaign(!editingCampaign)} className="btn-secondary">
+          {editingCampaign ? 'Cancel' : '✏️ Edit'}
+        </button>
+      </div>
+
+      <div className="product-form">
+        <div className="form-group">
+          <label className="form-label">Campaign Name</label>
+          {editingCampaign ? (
+            <input
+              type="text"
+              value={campaignEdits.name || ''}
+              onChange={(e) => setCampaignEdits({ ...campaignEdits, name: e.target.value })}
+              className="input"
+            />
+          ) : (
+            <div className="display-value">{campaign.name}</div>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Product/Service Name</label>
+          {editingCampaign ? (
+            <input
+              type="text"
+              placeholder="E.g., CloudSync Pro"
+              value={productInfo.name || ''}
+              onChange={(e) => updateProductInfo('name', e.target.value)}
+              className="input"
+            />
+          ) : (
+            <div className="display-value">{productInfo.name || 'Not set'}</div>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Product Description</label>
+          {editingCampaign ? (
+            <textarea
+              placeholder="Brief description of what you're offering"
+              value={productInfo.description || ''}
+              onChange={(e) => updateProductInfo('description', e.target.value)}
+              className="input"
+              rows="4"
+            />
+          ) : (
+            <div className="display-value">{productInfo.description || 'Not set'}</div>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Key Benefits</label>
+          {editingCampaign ? (
+            <textarea
+              placeholder="Main benefits and value propositions"
+              value={productInfo.benefits || ''}
+              onChange={(e) => updateProductInfo('benefits', e.target.value)}
+              className="input"
+              rows="3"
+            />
+          ) : (
+            <div className="display-value">{productInfo.benefits || 'Not set'}</div>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Call-to-Action</label>
+          {editingCampaign ? (
+            <input
+              type="text"
+              placeholder="E.g., Schedule a demo, Learn more, Get started"
+              value={productInfo.cta || ''}
+              onChange={(e) => updateProductInfo('cta', e.target.value)}
+              className="input"
+            />
+          ) : (
+            <div className="display-value">{productInfo.cta || 'Not set'}</div>
+          )}
+        </div>
+
+        {editingCampaign && (
+          <button onClick={onSave} className="btn-primary">
+            💾 Save Changes
+          </button>
+        )}
+      </div>
+
+      {!editingCampaign && (!productInfo.name || !productInfo.description) && (
+        <div className="info-banner">
+          <p>💡 Add product information to enable AI-powered message generation!</p>
+        </div>
+      )}
+    </div>
   );
 };
+
+const StepsBuilder = ({ campaign, onAddStep, onUpdateVariant, onSaveStep, leads, generateAIMessage }) => {
+  const steps = campaign.message_steps || [];
+  const [generatingAI, setGeneratingAI] = useState(null);
+
+  const handleAIGenerate = async (stepNumber, variantIndex, variantName) => {
+    const leadWithPersona = leads.find(l => l.persona);
+    
+    if (!leadWithPersona) {
+      toast.error('Please research at least one lead persona first (Research page)');
+      return;
+    }
+
+    if (!campaign.product_info || !campaign.product_info.name) {
+      toast.error('Please add product information first (Product Info tab)');
+      return;
+    }
+
+    setGeneratingAI(`${stepNumber}-${variantIndex}`);
+    const result = await generateAIMessage(stepNumber, variantName, leadWithPersona.id);
+    
+    if (result) {
+      // Update the variant with AI-generated content
+      const stepIndex = steps.findIndex(s => s.step_number === stepNumber);
+      if (stepIndex !== -1) {
+        onUpdateVariant(stepIndex, variantIndex, 'content', result.content);
+        if (result.subject && campaign.goal_type === 'email') {
+          onUpdateVariant(stepIndex, variantIndex, 'subject', result.subject);
+        }
+      }
+    }
+    
+    setGeneratingAI(null);
+  };
+
+  const updateStepTiming = (stepIndex, field, value) => {
+    toast.info('Step timing update - save to apply');
+  };
+
+  return (
+    <div className="steps-builder">
+      <div className="steps-header">
+        <div>
+          <h3>Message Sequence</h3>
+          <p style={{ color: '#a0a0b0', fontSize: '0.95rem' }}>
+            3-step sequence • Channel: {campaign.goal_type === 'email' ? '📧 Email' : '💼 LinkedIn'}
+          </p>
+        </div>
+        {steps.length < 5 && (
+          <button onClick={onAddStep} className="btn-secondary">
+            + Add Step
+          </button>
+        )}
+      </div>
+
+      {steps.length === 0 ? (
+        <div className="empty-state">
+          <p>Initializing 3-step sequence...</p>
+        </div>
+      ) : (
+        <div className="steps-list">
+          {steps.map((step, stepIndex) => (
+            <div key={step.id || stepIndex} className="step-card">
+              <div className="step-header">
+                <h4>Step {step.step_number}</h4>
+                <div className="step-meta">
+                  <span className="channel-badge">
+                    {step.channel === 'email' ? '📧 Email' : '💼 LinkedIn'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Timing Controls */}
+              <div className="step-timing">
+                <div className="timing-group">
+                  <label>Wait after previous step:</label>
+                  <div className="timing-inputs">
+                    <input
+                      type="number"
+                      min="0"
+                      value={step.delay_days || 0}
+                      onChange={(e) => updateStepTiming(stepIndex, 'delay_days', parseInt(e.target.value))}
+                      className="input timing-input"
+                      placeholder="Days"
+                    />
+                    <span>days</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      value={step.delay_hours || 0}
+                      onChange={(e) => updateStepTiming(stepIndex, 'delay_hours', parseInt(e.target.value))}
+                      className="input timing-input"
+                      placeholder="Hours"
+                    />
+                    <span>hours</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* A/B Variants */}
+              <div className="variants-container">
+                {step.variants?.map((variant, variantIndex) => (
+                  <div key={variant.id || variantIndex} className="variant-card">
+                    <div className="variant-header">
+                      <h5>{variant.name}</h5>
+                      <div className="variant-actions">
+                        <div className="percentage-control">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={variant.percentage || 50}
+                            onChange={(e) => onUpdateVariant(stepIndex, variantIndex, 'percentage', parseInt(e.target.value))}
+                            className="percentage-input"
+                          />
+                          <span>%</span>
+                        </div>
+                        <button
+                          onClick={() => handleAIGenerate(step.step_number, variantIndex, variant.name)}
+                          className="btn-ai-generate"
+                          disabled={generatingAI === `${step.step_number}-${variantIndex}`}
+                          title="Generate message using AI"
+                        >
+                          {generatingAI === `${step.step_number}-${variantIndex}` ? '⏳' : '🤖 AI'}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {step.channel === 'email' && (
+                      <input
+                        type="text"
+                        placeholder="Email subject line"
+                        value={variant.subject || ''}
+                        onChange={(e) => onUpdateVariant(stepIndex, variantIndex, 'subject', e.target.value)}
+                        className="input"
+                      />
+                    )}
+                    
+                    <textarea
+                      placeholder={`Message content...\n\nUse: {{first_name}}, {{company}}, {{job_title}}`}
+                      value={variant.content || ''}
+                      onChange={(e) => onUpdateVariant(stepIndex, variantIndex, 'content', e.target.value)}
+                      className="input"
+                      rows="8"
+                    />
+                    
+                    <div className="variant-metrics">
+                      <small>Sent: {variant.metrics?.sent || 0}</small>
+                      <small>Opened: {variant.metrics?.opened || 0}</small>
+                      <small>Replied: {variant.metrics?.replied || 0}</small>
+                      {variant.is_winner && <small className="winner-badge">🏆 Winner</small>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => onSaveStep(stepIndex)} className="btn-secondary">
+                💾 Save Step {step.step_number}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
 const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, editingCampaign, setEditingCampaign }) => {
   const productInfo = campaignEdits.product_info || {};
