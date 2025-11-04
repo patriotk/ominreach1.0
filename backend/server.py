@@ -171,6 +171,12 @@ class SetCampaignScheduleRequest(BaseModel):
     max_daily_email: int = 100
     randomize_timing: bool = True
 
+class GenerateMessageRequest(BaseModel):
+    campaign_id: str
+    step_number: int
+    lead_id: str  # To use persona
+    variant_name: str  # "Variant A" or "Variant B"
+
 class AddMessageVariantRequest(BaseModel):
     name: str
     subject: Optional[str] = None
