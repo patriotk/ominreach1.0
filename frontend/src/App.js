@@ -829,12 +829,15 @@ const ResearchPage = () => {
 // Settings Page
 const SettingsPage = () => {
   const [integrations, setIntegrations] = useState(null);
+  const [apiKeys, setApiKeys] = useState({ perplexity: '', openai: '', gemini: '' });
+  const [showApiKeys, setShowApiKeys] = useState(false);
   const [sheetsUrl, setSheetsUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     fetchIntegrations();
+    fetchApiKeys();
   }, []);
 
   const fetchIntegrations = async () => {
@@ -845,6 +848,33 @@ const SettingsPage = () => {
       toast.error('Failed to load integrations');
     }
     setLoading(false);
+  };
+
+  const fetchApiKeys = async () => {
+    try {
+      const response = await api.get('/settings/api-keys');
+      setShowApiKeys(response.data.perplexity_configured || response.data.openai_configured || response.data.gemini_configured);
+    } catch (error) {
+      console.error('Failed to load API keys');
+    }
+  };
+
+  const saveApiKeys = async () => {
+    try {
+      const payload = {
+        perplexity_key: apiKeys.perplexity || undefined,
+        openai_key: apiKeys.openai || undefined,
+        gemini_key: apiKeys.gemini || undefined
+      };
+      
+      await api.post('/settings/api-keys', payload);
+      toast.success('API keys saved!');
+      setApiKeys({ perplexity: '', openai: '', gemini: '' });
+      fetchIntegrations();
+      fetchApiKeys();
+    } catch (error) {
+      toast.error('Failed to save API keys');
+    }
   };
 
   const handleConnectSheets = async () => {
@@ -899,6 +929,65 @@ const SettingsPage = () => {
         </div>
       </div>
 
+      {/* API Keys Configuration */}
+      <div className="settings-section">
+        <h2 className="settings-title">🔑 API Keys</h2>
+        <div className="api-keys-config">
+          <div className="config-note" style={{ marginBottom: '1.5rem' }}>
+            <p>Configure your own API keys or use the built-in Emergent LLM Key for GPT-5 and Gemini.</p>
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Perplexity API Key</label>
+            <input
+              type="password"
+              placeholder="pplx-..."
+              value={apiKeys.perplexity}
+              onChange={(e) => setApiKeys({ ...apiKeys, perplexity: e.target.value })}
+              className="input"
+              data-testid="perplexity-key-input"
+            />
+            <small style={{ color: '#a0a0b0', display: 'block', marginTop: '0.5rem' }}>
+              Get your key from: <a href="https://www.perplexity.ai/settings/api" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>perplexity.ai/settings/api</a>
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">OpenAI API Key (Optional)</label>
+            <input
+              type="password"
+              placeholder="sk-..."
+              value={apiKeys.openai}
+              onChange={(e) => setApiKeys({ ...apiKeys, openai: e.target.value })}
+              className="input"
+              data-testid="openai-key-input"
+            />
+            <small style={{ color: '#a0a0b0', display: 'block', marginTop: '0.5rem' }}>
+              Leave blank to use Emergent LLM Key (recommended)
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Gemini API Key (Optional)</label>
+            <input
+              type="password"
+              placeholder="AI..."
+              value={apiKeys.gemini}
+              onChange={(e) => setApiKeys({ ...apiKeys, gemini: e.target.value })}
+              className="input"
+              data-testid="gemini-key-input"
+            />
+            <small style={{ color: '#a0a0b0', display: 'block', marginTop: '0.5rem' }}>
+              Leave blank to use Emergent LLM Key (recommended)
+            </small>
+          </div>
+
+          <button onClick={saveApiKeys} className="btn-primary" data-testid="save-api-keys-btn">
+            💾 Save API Keys
+          </button>
+        </div>
+      </div>
+
       <div className="settings-section">
         <h2 className="settings-title">🤖 AI Models</h2>
         <div className="integration-grid">
@@ -932,7 +1021,7 @@ const SettingsPage = () => {
             <p>LinkedIn profile research and persona generation</p>
             {integrations?.ai_models?.perplexity?.status === 'not_configured' && (
               <div className="integration-warning">
-                Add PERPLEXITY_API_KEY to backend/.env to enable
+                Add your Perplexity API key above to enable
               </div>
             )}
           </div>
@@ -1002,19 +1091,6 @@ const SettingsPage = () => {
               Configure email service to enable sending
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="settings-section">
-        <h2 className="settings-title">📝 Configuration Notes</h2>
-        <div className="config-note">
-          <h4>To enable all features:</h4>
-          <ul>
-            <li><strong>Perplexity AI:</strong> Add <code>PERPLEXITY_API_KEY</code> to <code>/app/backend/.env</code></li>
-            <li><strong>Email:</strong> Configure email service (Resend/SendGrid) in backend</li>
-            <li><strong>LinkedIn:</strong> Production LinkedIn API requires developer app approval</li>
-            <li><strong>GPT-5 & Gemini:</strong> Already configured via Emergent LLM Key ✅</li>
-          </ul>
         </div>
       </div>
     </div>
