@@ -953,7 +953,7 @@ const ResearchPage = () => {
 // Settings Page
 const SettingsPage = () => {
   const [integrations, setIntegrations] = useState(null);
-  const [apiKeys, setApiKeys] = useState({ perplexity: '', openai: '', gemini: '' });
+  const [apiKeys, setApiKeys] = useState({ perplexity: '', openai: '', gemini: '', resend: '' });
   const [showApiKeys, setShowApiKeys] = useState(false);
   const [sheetsUrl, setSheetsUrl] = useState('');
   const [loading, setLoading] = useState(true);
@@ -977,7 +977,12 @@ const SettingsPage = () => {
   const fetchApiKeys = async () => {
     try {
       const response = await api.get('/settings/api-keys');
-      setShowApiKeys(response.data.perplexity_configured || response.data.openai_configured || response.data.gemini_configured);
+      setShowApiKeys(
+        response.data.perplexity_configured || 
+        response.data.openai_configured || 
+        response.data.gemini_configured ||
+        response.data.resend_configured
+      );
     } catch (error) {
       console.error('Failed to load API keys');
     }
@@ -988,12 +993,13 @@ const SettingsPage = () => {
       const payload = {
         perplexity_key: apiKeys.perplexity || undefined,
         openai_key: apiKeys.openai || undefined,
-        gemini_key: apiKeys.gemini || undefined
+        gemini_key: apiKeys.gemini || undefined,
+        resend_key: apiKeys.resend || undefined
       };
       
       await api.post('/settings/api-keys', payload);
       toast.success('API keys saved!');
-      setApiKeys({ perplexity: '', openai: '', gemini: '' });
+      setApiKeys({ perplexity: '', openai: '', gemini: '', resend: '' });
       fetchIntegrations();
       fetchApiKeys();
     } catch (error) {
