@@ -146,6 +146,7 @@ class CreateCampaignRequest(BaseModel):
     goal_type: str = "hybrid"  # email, linkedin, hybrid
     target_persona: Optional[str] = None
     lead_ids: List[str] = []
+    product_info: Optional[Dict[str, Any]] = None
 
 class UpdateCampaignRequest(BaseModel):
     name: Optional[str] = None
@@ -153,6 +154,7 @@ class UpdateCampaignRequest(BaseModel):
     status: Optional[str] = None
     target_persona: Optional[str] = None
     lead_ids: Optional[List[str]] = None
+    product_info: Optional[Dict[str, Any]] = None
 
 class AddMessageStepRequest(BaseModel):
     step_number: int
