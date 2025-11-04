@@ -1047,11 +1047,11 @@ async def get_messages(
     if direction:
         query["direction"] = direction
     
-    messages = await db.messages.find(query).sort("sent_at", -1).limit(100).to_list(100)
+    messages = await db.messages.find(query, {"_id": 0}).sort("sent_at", -1).limit(100).to_list(100)
     
     # Enrich with lead info
     for msg in messages:
-        lead = await db.leads.find_one({"id": msg["lead_id"]})
+        lead = await db.leads.find_one({"id": msg["lead_id"]}, {"_id": 0})
         if lead:
             msg["lead_name"] = lead.get("name")
             msg["lead_email"] = lead.get("email")
