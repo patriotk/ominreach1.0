@@ -78,11 +78,17 @@ class Campaign(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
+    goal_type: str = "hybrid"  # email, linkedin, hybrid
     status: str = "draft"  # draft, active, paused, completed
     message_variants: List[MessageVariant] = []
+    message_steps: List[Dict[str, Any]] = []  # Sequence of steps
+    schedule: Optional[Dict[str, Any]] = None
+    metrics: Dict[str, Any] = Field(default_factory=dict)
     target_persona: Optional[str] = None
+    lead_ids: List[str] = []
     user_id: str
     team_id: Optional[str] = None
+    validation_errors: List[str] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AnalyticsMetrics(BaseModel):
