@@ -1031,6 +1031,13 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
+          <Route path="/campaigns/:campaignId/edit" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <CampaignBuilder />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
           <Route path="/leads" element={
             <ProtectedRoute>
               <DashboardLayout>
