@@ -193,6 +193,7 @@ class APIKeysUpdate(BaseModel):
     perplexity_key: Optional[str] = None
     openai_key: Optional[str] = None
     gemini_key: Optional[str] = None
+    resend_key: Optional[str] = None
 
 # ============ AUTH HELPERS ============
 
