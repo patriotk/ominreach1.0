@@ -755,6 +755,201 @@ const ResearchPage = () => {
   );
 };
 
+// Settings Page
+const SettingsPage = () => {
+  const [integrations, setIntegrations] = useState(null);
+  const [sheetsUrl, setSheetsUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, []);
+
+  const fetchIntegrations = async () => {
+    try {
+      const response = await api.get('/settings/integrations');
+      setIntegrations(response.data);
+    } catch (error) {
+      toast.error('Failed to load integrations');
+    }
+    setLoading(false);
+  };
+
+  const handleConnectSheets = async () => {
+    if (!sheetsUrl) {
+      toast.error('Please enter a Google Sheets URL');
+      return;
+    }
+
+    try {
+      await api.post('/integrations/google-sheets/connect', { spreadsheet_url: sheetsUrl });
+      toast.success('Google Sheets connected!');
+      setSheetsUrl('');
+      fetchIntegrations();
+    } catch (error) {
+      toast.error('Failed to connect Google Sheets');
+    }
+  };
+
+  const handleSyncSheets = async () => {
+    setSyncing(true);
+    try {
+      const response = await api.post('/integrations/google-sheets/sync');
+      toast.success(`Synced ${response.data.synced_leads} leads`);
+    } catch (error) {
+      toast.error('Sync failed');
+    }
+    setSyncing(false);
+  };
+
+  if (loading) {
+    return <div className="loading-screen"><div className="loading-spinner"></div></div>;
+  }
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      'ready': { label: '✅ Ready', class: 'status-active' },
+      'connected': { label: '✅ Connected', class: 'status-active' },
+      'not_configured': { label: '⚠️ Not Configured', class: 'status-paused' },
+      'not_connected': { label: '❌ Not Connected', class: 'status-draft' },
+      'mock_mode': { label: '🔄 Mock Mode', class: 'status-paused' }
+    };
+    const badge = statusMap[status] || { label: status, class: 'status-draft' };
+    return <span className={`status-badge ${badge.class}`}>{badge.label}</span>;
+  };
+
+  return (
+    <div className="page-container" data-testid="settings-page">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Settings</h1>
+          <p className="page-subtitle">Manage integrations and API connections</p>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h2 className="settings-title">🤖 AI Models</h2>
+        <div className="integration-grid">
+          <div className="integration-card">
+            <div className="integration-header">
+              <h3>GPT-5 (OpenAI)</h3>
+              {getStatusBadge(integrations?.ai_models?.gpt5?.status)}
+            </div>
+            <p>Advanced AI for analytics and insights generation</p>
+            {integrations?.ai_models?.gpt5?.enabled && (
+              <div className="integration-info">Using Emergent LLM Key</div>
+            )}
+          </div>
+
+          <div className="integration-card">
+            <div className="integration-header">
+              <h3>Gemini (Google)</h3>
+              {getStatusBadge(integrations?.ai_models?.gemini?.status)}
+            </div>
+            <p>Alternative AI model for content generation</p>
+            {integrations?.ai_models?.gemini?.enabled && (
+              <div className="integration-info">Using Emergent LLM Key</div>
+            )}
+          </div>
+
+          <div className="integration-card">
+            <div className="integration-header">
+              <h3>Perplexity AI</h3>
+              {getStatusBadge(integrations?.ai_models?.perplexity?.status)}
+            </div>
+            <p>LinkedIn profile research and persona generation</p>
+            {integrations?.ai_models?.perplexity?.status === 'not_configured' && (
+              <div className="integration-warning">
+                Add PERPLEXITY_API_KEY to backend/.env to enable
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h2 className="settings-title">🔗 Integrations</h2>
+        <div className="integration-grid">
+          <div className="integration-card">
+            <div className="integration-header">
+              <h3>Google Sheets</h3>
+              {getStatusBadge(integrations?.integrations?.google_sheets?.status)}
+            </div>
+            <p>Bi-directional CRM sync with Google Sheets</p>
+            
+            {!integrations?.integrations?.google_sheets?.connected ? (
+              <div style={{ marginTop: '1rem' }}>
+                <input
+                  type="text"
+                  placeholder="Paste Google Sheets URL"
+                  value={sheetsUrl}
+                  onChange={(e) => setSheetsUrl(e.target.value)}
+                  className="input"
+                  data-testid="sheets-url-input"
+                />
+                <button 
+                  onClick={handleConnectSheets} 
+                  className="btn-primary" 
+                  style={{ marginTop: '0.5rem' }}
+                  data-testid="connect-sheets-btn"
+                >
+                  Connect Sheet
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={handleSyncSheets} 
+                className="btn-secondary" 
+                style={{ marginTop: '1rem' }}
+                disabled={syncing}
+                data-testid="sync-sheets-btn"
+              >
+                {syncing ? 'Syncing...' : '🔄 Sync Now'}
+              </button>
+            )}
+          </div>
+
+          <div className="integration-card">
+            <div className="integration-header">
+              <h3>LinkedIn</h3>
+              {getStatusBadge(integrations?.integrations?.linkedin?.status)}
+            </div>
+            <p>Automated outreach and profile research</p>
+            <div className="integration-info">
+              Currently in mock mode - safe for testing
+            </div>
+          </div>
+
+          <div className="integration-card">
+            <div className="integration-header">
+              <h3>Email Service</h3>
+              {getStatusBadge(integrations?.integrations?.email?.status)}
+            </div>
+            <p>Email outreach via Resend/SendGrid</p>
+            <div className="integration-warning">
+              Configure email service to enable sending
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h2 className="settings-title">📝 Configuration Notes</h2>
+        <div className="config-note">
+          <h4>To enable all features:</h4>
+          <ul>
+            <li><strong>Perplexity AI:</strong> Add <code>PERPLEXITY_API_KEY</code> to <code>/app/backend/.env</code></li>
+            <li><strong>Email:</strong> Configure email service (Resend/SendGrid) in backend</li>
+            <li><strong>LinkedIn:</strong> Production LinkedIn API requires developer app approval</li>
+            <li><strong>GPT-5 & Gemini:</strong> Already configured via Emergent LLM Key ✅</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   return (
     <div className="App">
