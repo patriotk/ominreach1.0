@@ -927,15 +927,165 @@ async def get_integration_settings(current_user: User = Depends(get_current_user
 @api_router.post("/settings/api-keys")
 async def update_api_keys(keys: APIKeysUpdate, current_user: User = Depends(get_current_user)):
     """
-    Update API keys (admin only)
+    Update API keys
     """
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
+    # Store API keys in user's integration settings
+    updates = {}
+    if keys.perplexity_key:
+        updates["perplexity_key"] = keys.perplexity_key
+    if keys.openai_key:
+        updates["openai_key"] = keys.openai_key
+    if keys.gemini_key:
+        updates["gemini_key"] = keys.gemini_key
+    
+    if updates:
+        await db.integrations.update_one(
+            {"user_id": current_user.id, "type": "api_keys"},
+            {"$set": updates},
+            upsert=True
+        )
+    
+    return {"message": "API keys updated successfully", "keys_updated": list(updates.keys())}
+
+@api_router.get("/settings/api-keys")
+async def get_api_keys(current_user: User = Depends(get_current_user)):
+    """
+    Get configured API keys (masked)
+    """
+    integration = await db.integrations.find_one({
+        "user_id": current_user.id,
+        "type": "api_keys"
+    })
+    
+    if not integration:
+        return {
+            "perplexity_configured": False,
+            "openai_configured": False,
+            "gemini_configured": False
+        }
+    
     return {
-        "message": "API keys should be configured via environment variables",
-        "note": "For security, API keys are managed through .env file"
+        "perplexity_configured": bool(integration.get("perplexity_key")),
+        "openai_configured": bool(integration.get("openai_key")),
+        "gemini_configured": bool(integration.get("gemini_key")),
+        "perplexity_key_preview": integration.get("perplexity_key", "")[:8] + "..." if integration.get("perplexity_key") else None,
+        "openai_key_preview": integration.get("openai_key", "")[:8] + "..." if integration.get("openai_key") else None,
+        "gemini_key_preview": integration.get("gemini_key", "")[:8] + "..." if integration.get("gemini_key") else None
     }
+
+# ============ MESSAGES / INBOX ============
+
+class Message(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    campaign_id: str
+    lead_id: str
+    step_number: int
+    variant_id: str
+    channel: str
+    direction: str  # outgoing or incoming
+    subject: Optional[str] = None
+    content: str
+    status: str  # sent, delivered, opened, replied, failed
+    sent_at: Optional[datetime] = None
+    opened_at: Optional[datetime] = None
+    replied_at: Optional[datetime] = None
+    user_id: str
+
+class SendReplyRequest(BaseModel):
+    message_id: str  # Original message to reply to
+    content: str
+
+@api_router.get("/messages")
+async def get_messages(
+    campaign_id: Optional[str] = None,
+    lead_id: Optional[str] = None,
+    direction: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get messages (inbox)
+    """
+    query = {"user_id": current_user.id}
+    if campaign_id:
+        query["campaign_id"] = campaign_id
+    if lead_id:
+        query["lead_id"] = lead_id
+    if direction:
+        query["direction"] = direction
+    
+    messages = await db.messages.find(query).sort("sent_at", -1).limit(100).to_list(100)
+    
+    # Enrich with lead info
+    for msg in messages:
+        lead = await db.leads.find_one({"id": msg["lead_id"]})
+        if lead:
+            msg["lead_name"] = lead.get("name")
+            msg["lead_email"] = lead.get("email")
+            msg["lead_company"] = lead.get("company")
+    
+    return messages
+
+@api_router.post("/messages/reply")
+async def send_reply(reply_data: SendReplyRequest, current_user: User = Depends(get_current_user)):
+    """
+    Send reply to an incoming message
+    """
+    # Get original message
+    original = await db.messages.find_one({"id": reply_data.message_id})
+    if not original:
+        raise HTTPException(status_code=404, detail="Original message not found")
+    
+    # Create reply message
+    reply = Message(
+        campaign_id=original["campaign_id"],
+        lead_id=original["lead_id"],
+        step_number=original["step_number"],
+        variant_id=original["variant_id"],
+        channel=original["channel"],
+        direction="outgoing",
+        content=reply_data.content,
+        status="sent",
+        sent_at=datetime.now(timezone.utc),
+        user_id=current_user.id
+    )
+    
+    await db.messages.insert_one(reply.model_dump())
+    
+    return {"message": "Reply sent successfully", "reply_id": reply.id}
+
+# Mock endpoint to simulate incoming messages
+@api_router.post("/messages/simulate-incoming")
+async def simulate_incoming_message(campaign_id: str, lead_id: str, content: str, current_user: User = Depends(get_current_user)):
+    """
+    Simulate an incoming reply (for testing)
+    """
+    msg = Message(
+        campaign_id=campaign_id,
+        lead_id=lead_id,
+        step_number=1,
+        variant_id="test",
+        channel="email",
+        direction="incoming",
+        content=content,
+        status="replied",
+        sent_at=datetime.now(timezone.utc),
+        replied_at=datetime.now(timezone.utc),
+        user_id=current_user.id
+    )
+    
+    await db.messages.insert_one(msg.model_dump())
+    
+    # Update lead status
+    await db.leads.update_one(
+        {"id": lead_id},
+        {"$set": {"date_contacted": datetime.now(timezone.utc)}}
+    )
+    
+    return {"message": "Incoming message simulated", "message_id": msg.id}
 
 # ============ MOCK OUTREACH (Email/LinkedIn) ============
 
