@@ -72,15 +72,15 @@ export const CampaignBuilder = () => {
           { 
             id: `var-1a-${Date.now()}`, 
             name: 'Variant A', 
-            subject: channel === 'email' ? 'Initial outreach' : '',
-            content: `Hi {{first_name}},\n\nI noticed your work at {{company}}...`,
+            subject: channel === 'email' ? 'Quick question, {{first_name}}' : '',
+            content: `Hi {{first_name}},\n\nI noticed your work at {{company}} and thought this might be relevant.\n\nBest regards`,
             percentage: 50
           },
           { 
             id: `var-1b-${Date.now()}`, 
             name: 'Variant B', 
-            subject: channel === 'email' ? 'Quick question' : '',
-            content: `Hello {{first_name}},\n\nYour role as {{job_title}} caught my attention...`,
+            subject: channel === 'email' ? 'Thought of you, {{first_name}}' : '',
+            content: `Hello {{first_name}},\n\nYour role as {{job_title}} caught my attention.\n\nCheers`,
             percentage: 50
           }
         ]
@@ -95,14 +95,14 @@ export const CampaignBuilder = () => {
             id: `var-2a-${Date.now()}`, 
             name: 'Variant A', 
             subject: channel === 'email' ? 'Following up' : '',
-            content: `Hi {{first_name}},\n\nI wanted to follow up on my previous message...`,
+            content: `Hi {{first_name}},\n\nJust following up on my previous message.\n\nBest`,
             percentage: 50
           },
           { 
             id: `var-2b-${Date.now()}`, 
             name: 'Variant B', 
             subject: channel === 'email' ? 'Checking in' : '',
-            content: `{{first_name}},\n\nJust checking if you had a chance to review...`,
+            content: `{{first_name}},\n\nWanted to check if you saw my last message.\n\nThanks`,
             percentage: 50
           }
         ]
@@ -116,15 +116,15 @@ export const CampaignBuilder = () => {
           { 
             id: `var-3a-${Date.now()}`, 
             name: 'Variant A', 
-            subject: channel === 'email' ? 'Final follow-up' : '',
-            content: `Hi {{first_name}},\n\nThis is my last attempt to connect...`,
+            subject: channel === 'email' ? 'Last attempt' : '',
+            content: `Hi {{first_name}},\n\nThis is my final follow-up.\n\nRegards`,
             percentage: 50
           },
           { 
             id: `var-3b-${Date.now()}`, 
             name: 'Variant B', 
-            subject: channel === 'email' ? 'One more thing' : '',
-            content: `{{first_name}},\n\nBefore I close the loop, I wanted to share...`,
+            subject: channel === 'email' ? 'Final note' : '',
+            content: `{{first_name}},\n\nOne last message before I close the loop.\n\nBest`,
             percentage: 50
           }
         ]
@@ -139,6 +139,7 @@ export const CampaignBuilder = () => {
       fetchCampaign();
     } catch (error) {
       console.error('Failed to initialize steps:', error);
+      toast.error('Failed to initialize sequence');
     }
     setInitializingSteps(false);
   };
