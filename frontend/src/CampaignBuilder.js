@@ -40,11 +40,16 @@ export const CampaignBuilder = () => {
   const fetchCampaign = async () => {
     try {
       const response = await api.get(`/campaigns/${campaignId}`);
-      setCampaign(response.data);
+      const campaignData = response.data;
+      setCampaign(campaignData);
+      setCampaignEdits({
+        name: campaignData.name,
+        product_info: campaignData.product_info || {}
+      });
       
-      // Auto-initialize 3 steps if campaign is new
-      if (!response.data.message_steps || response.data.message_steps.length === 0) {
-        await initializeDefaultSteps(response.data);
+      // Auto-initialize 3 steps if campaign is new and hasn't been initialized
+      if ((!campaignData.message_steps || campaignData.message_steps.length === 0) && !initializingSteps) {
+        await initializeDefaultSteps(campaignData);
       }
     } catch (error) {
       toast.error('Failed to load campaign');
