@@ -616,14 +616,35 @@ async def research_persona(request: ResearchPersonaRequest, current_user: User =
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     
-    perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
+    # Get user's API key or use environment key
+    user_keys = await db.integrations.find_one({"user_id": current_user.id, "type": "api_keys"})
+    perplexity_api_key = user_keys.get("perplexity_key") if user_keys else None
+    
     if not perplexity_api_key:
-        return {"message": "Perplexity API key not configured. Using mock persona.", "persona": "Professional with 5+ years of experience. Goal-oriented and data-driven decision maker. Values efficiency and ROI. Key interests: growth, automation, scalability."}
+        perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
+    
+    if not perplexity_api_key:
+        return {
+            "message": "Perplexity API key not configured. Add your key in Settings.",
+            "persona": "Professional with experience in their field. Configure Perplexity API to get detailed persona."
+        }
     
     # Use Perplexity API for research
     try:
         async with httpx.AsyncClient() as client:
-            research_query = f"Research the LinkedIn profile: {request.linkedin_url}. Provide a professional persona including: job title, company, key responsibilities, professional interests, communication style, likely goals and pain points."
+            research_query = f"""Research the professional at this LinkedIn profile: {request.linkedin_url}
+
+Provide a comprehensive persona including:
+- Job title and company
+- Years of experience and seniority level
+- Key responsibilities and expertise areas
+- Professional interests and goals
+- Communication style preferences
+- Likely pain points in their role
+- Decision-making criteria
+- Technology affinity
+
+Format as a concise persona summary (2-3 paragraphs)."""
             
             response = await client.post(
                 "https://api.perplexity.ai/chat/completions",
@@ -646,15 +667,24 @@ async def research_persona(request: ResearchPersonaRequest, current_user: User =
                 # Update lead with persona
                 await db.leads.update_one(
                     {"id": request.lead_id},
-                    {"$set": {"persona": persona, "date_contacted": datetime.now(timezone.utc)}}
+                    {"$set": {
+                        "persona": persona,
+                        "date_contacted": datetime.now(timezone.utc)
+                    }}
                 )
                 
                 return {"lead_id": request.lead_id, "persona": persona}
             else:
-                return {"message": "Research service temporarily unavailable", "persona": "Professional profile - research pending"}
+                return {
+                    "message": f"Research service error: {response.status_code}",
+                    "persona": "Professional profile - research pending"
+                }
     except Exception as e:
         logging.error(f"Perplexity API error: {str(e)}")
-        return {"message": f"Research error: {str(e)}", "persona": "Professional profile - research pending"}
+        return {
+            "message": f"Research error: {str(e)}",
+            "persona": "Professional profile - research pending"
+        }
 
 # ============ ANALYTICS & AI INSIGHTS ============
 
