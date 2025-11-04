@@ -796,6 +796,414 @@ textarea.input {
   font-size: 0.9rem;
 }
 
+/* ========== CAMPAIGN BUILDER ========== */
+
+.campaign-builder {
+  padding: 2rem;
+}
+
+.builder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.builder-header h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.campaign-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  color: #a0a0b0;
+  font-size: 0.95rem;
+}
+
+.builder-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.builder-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.builder-tabs .tab {
+  padding: 1rem 2rem;
+  background: transparent;
+  border: none;
+  color: #a0a0b0;
+  font-size: 1rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s;
+}
+
+.builder-tabs .tab:hover {
+  color: #93c5fd;
+}
+
+.builder-tabs .tab.active {
+  color: #93c5fd;
+  border-bottom-color: #93c5fd;
+}
+
+.builder-content {
+  min-height: 400px;
+}
+
+/* Steps Builder */
+.steps-builder {
+  max-width: 1200px;
+}
+
+.steps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.steps-header h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  color: #ffffff;
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.step-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.step-header h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.3rem;
+  color: #ffffff;
+}
+
+.step-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.channel-badge {
+  padding: 0.25rem 0.75rem;
+  background: rgba(147, 197, 253, 0.15);
+  color: #93c5fd;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.variants-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.variant-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.variant-card h5 {
+  font-family: 'Space Grotesk', sans-serif;
+  color: #93c5fd;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.variant-metrics {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.variant-metrics small {
+  color: #a0a0b0;
+  font-size: 0.85rem;
+}
+
+/* Schedule Builder */
+.schedule-builder {
+  max-width: 800px;
+}
+
+.schedule-builder h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  color: #ffffff;
+}
+
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  color: #a0a0b0;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.form-label {
+  color: #a0a0b0;
+  font-weight: 500;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.day-selector {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.day-btn {
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #a0a0b0;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.day-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(147, 197, 253, 0.3);
+}
+
+.day-btn.active {
+  background: rgba(147, 197, 253, 0.15);
+  border-color: #93c5fd;
+  color: #93c5fd;
+}
+
+/* Leads Assigner */
+.leads-assigner {
+  max-width: 1200px;
+}
+
+.assigner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.assigner-header h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  color: #ffffff;
+}
+
+.assigner-header > div {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.leads-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.lead-card {
+  display: flex;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.lead-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(147, 197, 253, 0.3);
+}
+
+.lead-card.selected {
+  background: rgba(147, 197, 253, 0.1);
+  border-color: #93c5fd;
+}
+
+.lead-card input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.lead-card strong {
+  color: #ffffff;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.lead-card p {
+  color: #a0a0b0;
+  font-size: 0.9rem;
+}
+
+/* Campaign Analytics */
+.campaign-analytics h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+}
+
+.verdict-card {
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin: 2rem 0;
+}
+
+.verdict-card h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.verdict-success {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.verdict-moderate {
+  background: rgba(251, 146, 60, 0.15);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  color: #fb923c;
+}
+
+.verdict-poor {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.variants-performance {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.variant-performance-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.variant-performance-card h5 {
+  font-family: 'Space Grotesk', sans-serif;
+  color: #ffffff;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.perf-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.perf-stats span {
+  color: #a0a0b0;
+  font-size: 0.9rem;
+}
+
+.campaign-card {
+  position: relative;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.campaign-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(147, 197, 253, 0.15);
+}
+
+.campaign-metrics-preview {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.campaign-metrics-preview small {
+  color: #a0a0b0;
+}
+
+.campaign-metrics-preview .ai-score {
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+.goal-badge {
+  padding: 0.25rem 0.75rem;
+  background: rgba(196, 181, 253, 0.15);
+  color: #c4b5fd;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.campaign-actions {
+  margin-top: 1rem;
+}
+
 @media (max-width: 768px) {
   .dashboard-layout {
     flex-direction: column;
