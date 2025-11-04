@@ -141,12 +141,31 @@ class UpdateLeadRequest(BaseModel):
 
 class CreateCampaignRequest(BaseModel):
     name: str
+    goal_type: str = "hybrid"  # email, linkedin, hybrid
     target_persona: Optional[str] = None
+    lead_ids: List[str] = []
 
 class UpdateCampaignRequest(BaseModel):
     name: Optional[str] = None
+    goal_type: Optional[str] = None
     status: Optional[str] = None
     target_persona: Optional[str] = None
+    lead_ids: Optional[List[str]] = None
+
+class AddMessageStepRequest(BaseModel):
+    step_number: int
+    channel: str  # email or linkedin
+    delay_days: int = 0
+    variants: List[Dict[str, Any]]  # List of {name, subject, content}
+
+class SetCampaignScheduleRequest(BaseModel):
+    start_date: str  # ISO format
+    timezone: str = "UTC"
+    sending_days: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    sending_hours: List[int] = [9, 10, 11, 14, 15, 16]
+    max_daily_linkedin: int = 50
+    max_daily_email: int = 100
+    randomize_timing: bool = True
 
 class AddMessageVariantRequest(BaseModel):
     name: str
