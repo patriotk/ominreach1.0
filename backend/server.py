@@ -404,7 +404,9 @@ async def bulk_import_leads(import_data: BulkImportLeadsRequest, current_user: U
 async def create_campaign(campaign_data: CreateCampaignRequest, current_user: User = Depends(get_current_user)):
     campaign = Campaign(
         name=campaign_data.name,
+        goal_type=campaign_data.goal_type,
         target_persona=campaign_data.target_persona,
+        lead_ids=campaign_data.lead_ids,
         user_id=current_user.id
     )
     await db.campaigns.insert_one(campaign.model_dump())
