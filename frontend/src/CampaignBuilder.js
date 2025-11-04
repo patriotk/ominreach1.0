@@ -232,6 +232,34 @@ export const CampaignBuilder = () => {
     }
   };
 
+  const saveCampaignEdits = async () => {
+    try {
+      await api.patch(`/campaigns/${campaignId}`, campaignEdits);
+      toast.success('Campaign updated!');
+      setEditingCampaign(false);
+      fetchCampaign();
+    } catch (error) {
+      toast.error('Failed to update campaign');
+    }
+  };
+
+  const generateAIMessage = async (stepNumber, variantName, leadId) => {
+    try {
+      const response = await api.post('/campaigns/generate-message', {
+        campaign_id: campaignId,
+        step_number: stepNumber,
+        lead_id: leadId,
+        variant_name: variantName
+      });
+      
+      toast.success('AI message generated!');
+      return response.data;
+    } catch (error) {
+      toast.error('AI generation failed');
+      return null;
+    }
+  };
+
   if (loading) {
     return <div className="loading-screen"><div className="loading-spinner"></div></div>;
   }
