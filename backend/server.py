@@ -574,6 +574,137 @@ async def sync_campaign_to_sheets(campaign_id: str, current_user: User = Depends
     result = await campaign_service.sync_to_google_sheets(campaign_id, current_user.id)
     return result
 
+@api_router.post("/campaigns/generate-message")
+async def generate_ai_message(request: GenerateMessageRequest, current_user: User = Depends(get_current_user)):
+    """
+    Generate AI-powered message for campaign step based on persona and product info
+    """
+    # Get campaign
+    campaign = await db.campaigns.find_one({"id": request.campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Get lead for persona
+    lead = await db.leads.find_one({"id": request.lead_id})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Get product info
+    product_info = campaign.get("product_info", {})
+    product_name = product_info.get("name", "our product")
+    product_description = product_info.get("description", "")
+    product_benefits = product_info.get("benefits", "")
+    product_cta = product_info.get("cta", "learn more")
+    
+    # Get persona
+    persona = lead.get("persona", "Professional contact")
+    lead_name = lead.get("name", "")
+    lead_title = lead.get("title", "")
+    lead_company = lead.get("company", "")
+    
+    # Determine step context
+    step_contexts = {
+        1: {
+            "goal": "Initial introduction and value proposition",
+            "tone": "Friendly, professional, brief",
+            "focus": "Establish relevance and pique interest",
+            "best_practices": "Personalize with their role, keep under 100 words, end with soft question"
+        },
+        2: {
+            "goal": "Follow-up with specific value and social proof",
+            "tone": "Helpful, consultative",
+            "focus": "Address potential pain points, provide proof/credibility",
+            "best_practices": "Reference first message, share specific benefit, include case study or metric"
+        },
+        3: {
+            "goal": "Final touchpoint with clear call-to-action",
+            "tone": "Direct but respectful",
+            "focus": "Create urgency, offer easy next step",
+            "best_practices": "Acknowledge silence, provide clear CTA, give timeline/scarcity"
+        }
+    }
+    
+    step_context = step_contexts.get(request.step_number, step_contexts[1])
+    channel = campaign.get("goal_type", "email")
+    
+    # Generate message using GPT-5
+    try:
+        llm_key = os.getenv("EMERGENT_LLM_KEY")
+        chat = LlmChat(
+            api_key=llm_key,
+            session_id=f"msg-gen-{current_user.id}",
+            system_message="You are an expert B2B sales copywriter specializing in personalized outreach. Create compelling, natural-sounding messages that feel authentic and personalized."
+        ).with_model("openai", "gpt-5")
+        
+        generation_prompt = f"""Create a {channel} outreach message for Step {request.step_number} ({request.variant_name}).
+
+LEAD INFORMATION:
+- Name: {lead_name}
+- Title: {lead_title}
+- Company: {lead_company}
+- Persona: {persona}
+
+PRODUCT INFORMATION:
+- Product: {product_name}
+- Description: {product_description}
+- Key Benefits: {product_benefits}
+- Call-to-Action: {product_cta}
+
+STEP {request.step_number} CONTEXT:
+- Goal: {step_context['goal']}
+- Tone: {step_context['tone']}
+- Focus: {step_context['focus']}
+- Best Practices: {step_context['best_practices']}
+
+REQUIREMENTS:
+1. Personalize using lead's name, title, and company
+2. Reference their persona/role naturally
+3. Highlight product benefit most relevant to their role
+4. Match the tone and goal for Step {request.step_number}
+5. {"Include subject line and body" if channel == "email" else "LinkedIn message only (no subject)"}
+6. Keep concise ({"under 150 words" if request.step_number == 1 else "under 200 words"})
+7. Use personalization tokens: {{{{first_name}}}}, {{{{company}}}}, {{{{job_title}}}}
+
+{"Format as JSON: {subject: string, body: string}" if channel == "email" else "Return just the message body text"}
+"""
+        
+        message_obj = UserMessage(text=generation_prompt)
+        ai_response = await chat.send_message(message_obj)
+        
+        # Parse response
+        if channel == "email":
+            import json
+            try:
+                result = json.loads(ai_response)
+                return {
+                    "subject": result.get("subject", ""),
+                    "content": result.get("body", ai_response),
+                    "variant": request.variant_name
+                }
+            except:
+                # Fallback if not JSON
+                lines = ai_response.split('\n', 1)
+                return {
+                    "subject": lines[0].replace("Subject:", "").strip() if len(lines) > 0 else "Outreach",
+                    "content": lines[1].strip() if len(lines) > 1 else ai_response,
+                    "variant": request.variant_name
+                }
+        else:
+            return {
+                "content": ai_response,
+                "variant": request.variant_name
+            }
+    
+    except Exception as e:
+        logging.error(f"AI message generation error: {str(e)}")
+        # Return fallback template
+        return {
+            "subject": f"Quick question, {{{{first_name}}}}",
+            "content": f"Hi {{{{first_name}}}},\n\nI noticed your work as {{{{job_title}}}} at {{{{company}}}}.\n\nI thought {product_name} might be relevant for your team.\n\nWould you be open to a quick chat?",
+            "variant": request.variant_name,
+            "note": "AI generation unavailable - using template"
+        }
+
 @api_router.patch("/campaigns/{campaign_id}", response_model=Campaign)
 async def update_campaign_old(campaign_id: str, update_data: UpdateCampaignRequest, current_user: User = Depends(get_current_user)):
     # Keeping old endpoint for compatibility
