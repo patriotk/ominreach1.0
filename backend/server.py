@@ -432,6 +432,146 @@ async def update_campaign(campaign_id: str, update_data: UpdateCampaignRequest, 
     
     update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
     if update_dict:
+        update_dict["updated_at"] = datetime.now(timezone.utc)
+        await db.campaigns.update_one({"id": campaign_id}, {"$set": update_dict})
+        campaign.update(update_dict)
+    
+    return Campaign(**campaign)
+
+@api_router.post("/campaigns/{campaign_id}/steps")
+async def add_campaign_step(campaign_id: str, step_data: AddMessageStepRequest, current_user: User = Depends(get_current_user)):
+    campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    step = {
+        "id": str(uuid.uuid4()),
+        "step_number": step_data.step_number,
+        "channel": step_data.channel,
+        "delay_days": step_data.delay_days,
+        "variants": step_data.variants
+    }
+    
+    await db.campaigns.update_one(
+        {"id": campaign_id},
+        {"$push": {"message_steps": step}}
+    )
+    
+    return {"message": "Step added successfully", "step": step}
+
+@api_router.post("/campaigns/{campaign_id}/schedule")
+async def set_campaign_schedule(campaign_id: str, schedule_data: SetCampaignScheduleRequest, current_user: User = Depends(get_current_user)):
+    campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    schedule = schedule_data.model_dump()
+    
+    await db.campaigns.update_one(
+        {"id": campaign_id},
+        {"$set": {"schedule": schedule}}
+    )
+    
+    return {"message": "Schedule set successfully", "schedule": schedule}
+
+@api_router.post("/campaigns/{campaign_id}/validate")
+async def validate_campaign(campaign_id: str, current_user: User = Depends(get_current_user)):
+    campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign_service = CampaignService(db)
+    errors = campaign_service.validate_campaign(campaign)
+    
+    await db.campaigns.update_one(
+        {"id": campaign_id},
+        {"$set": {"validation_errors": errors}}
+    )
+    
+    return {"valid": len(errors) == 0, "errors": errors}
+
+@api_router.post("/campaigns/{campaign_id}/activate")
+async def activate_campaign(campaign_id: str, current_user: User = Depends(get_current_user)):
+    campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Validate first
+    campaign_service = CampaignService(db)
+    errors = campaign_service.validate_campaign(campaign)
+    
+    if errors:
+        return {"success": False, "errors": errors}
+    
+    # Set status to validating then active
+    await db.campaigns.update_one(
+        {"id": campaign_id},
+        {"$set": {"status": "active", "validation_errors": []}}
+    )
+    
+    return {"success": True, "message": "Campaign activated successfully"}
+
+@api_router.get("/campaigns/{campaign_id}/analytics")
+async def get_campaign_analytics(campaign_id: str, current_user: User = Depends(get_current_user)):
+    campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Get executions
+    executions = await db.campaign_executions.find({"campaign_id": campaign_id}).to_list(1000)
+    
+    # Calculate metrics
+    campaign_service = CampaignService(db)
+    metrics = campaign_service.calculate_metrics(campaign_id, executions)
+    
+    # Calculate AI score
+    ai_score = campaign_service.calculate_ai_score(metrics)
+    verdict = campaign_service.determine_verdict(ai_score)
+    
+    metrics["ai_score"] = ai_score
+    metrics["verdict"] = verdict
+    
+    # Update campaign metrics
+    await db.campaigns.update_one(
+        {"id": campaign_id},
+        {"$set": {"metrics": metrics}}
+    )
+    
+    # Get variant performance
+    variant_performance = []
+    for step in campaign.get("message_steps", []):
+        for variant in step.get("variants", []):
+            variant_execs = [e for e in executions if e.get("variant_id") == variant.get("id")]
+            variant_metrics = campaign_service.calculate_metrics(campaign_id, variant_execs)
+            variant_performance.append({
+                "step": step["step_number"],
+                "variant": variant["name"],
+                "variant_id": variant["id"],
+                "metrics": variant_metrics
+            })
+    
+    return {
+        "campaign": campaign,
+        "overall_metrics": metrics,
+        "variant_performance": variant_performance,
+        "total_executions": len(executions)
+    }
+
+@api_router.post("/campaigns/{campaign_id}/sync-sheets")
+async def sync_campaign_to_sheets(campaign_id: str, current_user: User = Depends(get_current_user)):
+    campaign_service = CampaignService(db)
+    result = await campaign_service.sync_to_google_sheets(campaign_id, current_user.id)
+    return result
+
+@api_router.patch("/campaigns/{campaign_id}", response_model=Campaign)
+async def update_campaign_old(campaign_id: str, update_data: UpdateCampaignRequest, current_user: User = Depends(get_current_user)):
+    # Keeping old endpoint for compatibility
+    campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    if update_dict:
         await db.campaigns.update_one({"id": campaign_id}, {"$set": update_dict})
         campaign.update(update_dict)
     
