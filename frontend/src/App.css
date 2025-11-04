@@ -1873,6 +1873,244 @@ textarea.input {
   border-color: #ef4444;
 }
 
+/* ========== AI AGENT STUDIO ========== */
+
+.ai-studio {
+  padding: 2rem;
+  max-width: 1400px;
+}
+
+.studio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 3rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.studio-header h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+}
+
+.studio-header p {
+  color: #a0a0b0;
+  font-size: 1.1rem;
+}
+
+.usage-dashboard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.usage-dashboard h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+}
+
+.usage-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.usage-card {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.usage-label {
+  color: #a0a0b0;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.usage-value {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.provider-breakdown {
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.provider-breakdown h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+.provider-stat {
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  color: #e8e8ea;
+}
+
+.provider-stat strong {
+  color: #93c5fd;
+  text-transform: capitalize;
+}
+
+.model-config-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.model-config-section h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.config-field label {
+  color: #a0a0b0;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.config-field small {
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.step-prompts-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.step-prompts-section h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+}
+
+.step-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.step-tab {
+  padding: 1rem 2rem;
+  background: transparent;
+  border: none;
+  color: #a0a0b0;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.step-tab:hover {
+  color: #a855f7;
+}
+
+.step-tab.active {
+  color: #a855f7;
+  border-bottom-color: #a855f7;
+}
+
+.step-config {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.prompt-display {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+.recent-operations {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.recent-operations h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+}
+
+.operations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.operation-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.operation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.operation-info strong {
+  color: #ffffff;
+  text-transform: capitalize;
+}
+
+.operation-info span {
+  color: #a0a0b0;
+  font-size: 0.85rem;
+}
+
+.operation-stats {
+  display: flex;
+  gap: 1.5rem;
+  color: #a0a0b0;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 768px) {
   .dashboard-layout {
     flex-direction: column;
