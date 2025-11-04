@@ -239,6 +239,7 @@ const DashboardLayout = ({ children }) => {
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/campaigns', label: 'Campaigns', icon: '🎯' },
     { path: '/leads', label: 'Leads', icon: '👥' },
+    { path: '/messages', label: 'Messages', icon: '💬' },
     { path: '/analytics', label: 'Analytics', icon: '📈' },
     { path: '/research', label: 'Research', icon: '🔍' },
     { path: '/settings', label: 'Settings', icon: '⚙️' },
