@@ -1170,39 +1170,129 @@ async def simulate_incoming_message(campaign_id: str, lead_id: str, content: str
 @api_router.post("/outreach/send")
 async def send_outreach(campaign_id: str, lead_ids: List[str], variant_id: str, current_user: User = Depends(get_current_user)):
     """
-    Mock send outreach messages
+    Send outreach messages via Email or LinkedIn
     """
     campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     
-    # Find variant
+    # Find the message step and variant
     variant = None
-    for v in campaign.get("message_variants", []):
-        if v["id"] == variant_id:
-            variant = v
+    step_info = None
+    for step in campaign.get("message_steps", []):
+        for v in step.get("variants", []):
+            if v["id"] == variant_id:
+                variant = v
+                step_info = step
+                break
+        if variant:
             break
     
     if not variant:
         raise HTTPException(status_code=404, detail="Message variant not found")
     
-    # Update metrics (mock)
-    sent_count = len(lead_ids)
+    sent_count = 0
+    failed_count = 0
+    channel = step_info.get("channel", "email")
     
-    # Update variant metrics
-    await db.campaigns.update_one(
-        {"id": campaign_id, "message_variants.id": variant_id},
-        {"$inc": {"message_variants.$.metrics.sent": sent_count}}
-    )
+    # Get leads
+    leads = await db.leads.find({"id": {"$in": lead_ids}}).to_list(len(lead_ids))
     
-    # Update leads
-    for lead_id in lead_ids:
+    # Get Resend API key if email campaign
+    resend_api_key = None
+    if channel == "email":
+        user_keys = await db.integrations.find_one({"user_id": current_user.id, "type": "api_keys"})
+        resend_api_key = user_keys.get("resend_key") if user_keys else None
+        
+        if not resend_api_key:
+            resend_api_key = os.getenv("RESEND_API_KEY")
+    
+    for lead in leads:
+        # Apply personalization
+        campaign_service = CampaignService(db)
+        personalized_content = campaign_service.apply_personalization(variant["content"], lead)
+        personalized_subject = campaign_service.apply_personalization(variant.get("subject", ""), lead) if variant.get("subject") else None
+        
+        if channel == "email" and resend_api_key:
+            # Send via Resend
+            try:
+                resend.api_key = resend_api_key
+                
+                params = {
+                    "from": "outreach@omnireach.ai",
+                    "to": [lead.get("email")],
+                    "subject": personalized_subject or "Outreach Message",
+                    "html": f"<p>{personalized_content.replace(chr(10), '<br>')}</p>",
+                    "tags": [
+                        {"name": "campaign_id", "value": campaign_id},
+                        {"name": "variant_id", "value": variant_id},
+                        {"name": "lead_id", "value": lead.get("id")}
+                    ]
+                }
+                
+                email_response = resend.Emails.send(params)
+                
+                # Store message
+                message = Message(
+                    campaign_id=campaign_id,
+                    lead_id=lead.get("id"),
+                    step_number=step_info.get("step_number", 1),
+                    variant_id=variant_id,
+                    channel=channel,
+                    direction="outgoing",
+                    subject=personalized_subject,
+                    content=personalized_content,
+                    status="sent",
+                    sent_at=datetime.now(timezone.utc),
+                    user_id=current_user.id
+                )
+                await db.messages.insert_one(message.model_dump())
+                
+                sent_count += 1
+            except Exception as e:
+                logging.error(f"Email send error: {str(e)}")
+                failed_count += 1
+        else:
+            # Mock send (LinkedIn or no API key)
+            message = Message(
+                campaign_id=campaign_id,
+                lead_id=lead.get("id"),
+                step_number=step_info.get("step_number", 1),
+                variant_id=variant_id,
+                channel=channel,
+                direction="outgoing",
+                subject=personalized_subject,
+                content=personalized_content,
+                status="sent",
+                sent_at=datetime.now(timezone.utc),
+                user_id=current_user.id
+            )
+            await db.messages.insert_one(message.model_dump())
+            sent_count += 1
+        
+        # Update lead
         await db.leads.update_one(
-            {"id": lead_id},
+            {"id": lead.get("id")},
             {"$set": {"date_contacted": datetime.now(timezone.utc), "campaign_id": campaign_id}}
         )
     
-    return {"message": f"Sent {sent_count} messages via {variant['channel']}", "sent_count": sent_count}
+    # Update variant metrics
+    for step in campaign.get("message_steps", []):
+        for idx, v in enumerate(step.get("variants", [])):
+            if v["id"] == variant_id:
+                await db.campaigns.update_one(
+                    {"id": campaign_id},
+                    {"$inc": {f"message_steps.{campaign.get('message_steps', []).index(step)}.variants.{idx}.metrics.sent": sent_count}}
+                )
+                break
+    
+    return {
+        "message": f"Sent {sent_count} messages via {channel}" + (f" ({failed_count} failed)" if failed_count > 0 else ""),
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+        "channel": channel,
+        "using_real_email": bool(channel == "email" and resend_api_key)
+    }
 
 # Include the router in the main app
 app.include_router(api_router)
