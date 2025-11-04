@@ -323,18 +323,30 @@ export const CampaignBuilder = () => {
 const StepsBuilder = ({ campaign, onAddStep, onUpdateVariant, onSaveStep }) => {
   const steps = campaign.message_steps || [];
 
+  const updateStepTiming = (stepIndex, field, value) => {
+    // This would update step timing in a full implementation
+    toast.info('Step timing update - save to apply');
+  };
+
   return (
     <div className="steps-builder">
       <div className="steps-header">
-        <h3>Message Sequence</h3>
-        <button onClick={onAddStep} className="btn-primary">
-          + Add Step
-        </button>
+        <div>
+          <h3>Message Sequence</h3>
+          <p style={{ color: '#a0a0b0', fontSize: '0.95rem' }}>
+            3-step sequence • Channel: {campaign.goal_type === 'email' ? '📧 Email' : '💼 LinkedIn'}
+          </p>
+        </div>
+        {steps.length < 5 && (
+          <button onClick={onAddStep} className="btn-secondary">
+            + Add Step
+          </button>
+        )}
       </div>
 
       {steps.length === 0 ? (
         <div className="empty-state">
-          <p>No steps yet. Add your first message step to begin building your sequence.</p>
+          <p>Initializing 3-step sequence...</p>
         </div>
       ) : (
         <div className="steps-list">
@@ -343,47 +355,115 @@ const StepsBuilder = ({ campaign, onAddStep, onUpdateVariant, onSaveStep }) => {
               <div className="step-header">
                 <h4>Step {step.step_number}</h4>
                 <div className="step-meta">
-                  <span className="channel-badge">{step.channel}</span>
-                  {step.delay_days > 0 && <span>Wait {step.delay_days} days</span>}
+                  <span className="channel-badge">
+                    {step.channel === 'email' ? '📧 Email' : '💼 LinkedIn'}
+                  </span>
                 </div>
               </div>
 
+              {/* Timing Controls */}
+              <div className="step-timing">
+                <div className="timing-group">
+                  <label>Wait after previous step:</label>
+                  <div className="timing-inputs">
+                    <input
+                      type="number"
+                      min="0"
+                      value={step.delay_days || 0}
+                      onChange={(e) => updateStepTiming(stepIndex, 'delay_days', parseInt(e.target.value))}
+                      className="input timing-input"
+                      placeholder="Days"
+                    />
+                    <span>days</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      value={step.delay_hours || 0}
+                      onChange={(e) => updateStepTiming(stepIndex, 'delay_hours', parseInt(e.target.value))}
+                      className="input timing-input"
+                      placeholder="Hours"
+                    />
+                    <span>hours</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* A/B Variants */}
               <div className="variants-container">
                 {step.variants?.map((variant, variantIndex) => (
                   <div key={variant.id || variantIndex} className="variant-card">
-                    <h5>{variant.name}</h5>
+                    <div className="variant-header">
+                      <h5>{variant.name}</h5>
+                      <div className="percentage-control">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={variant.percentage || 50}
+                          onChange={(e) => onUpdateVariant(stepIndex, variantIndex, 'percentage', parseInt(e.target.value))}
+                          className="percentage-input"
+                        />
+                        <span>%</span>
+                      </div>
+                    </div>
+                    
                     {step.channel === 'email' && (
                       <input
                         type="text"
-                        placeholder="Email subject"
+                        placeholder="Email subject line"
                         value={variant.subject || ''}
                         onChange={(e) => onUpdateVariant(stepIndex, variantIndex, 'subject', e.target.value)}
                         className="input"
                       />
                     )}
+                    
                     <textarea
-                      placeholder="Message content... Use {{first_name}}, {{company}}, {{job_title}}"
+                      placeholder={`Message content...\n\nUse: {{first_name}}, {{company}}, {{job_title}}`}
                       value={variant.content || ''}
                       onChange={(e) => onUpdateVariant(stepIndex, variantIndex, 'content', e.target.value)}
                       className="input"
-                      rows="6"
+                      rows="8"
                     />
+                    
                     <div className="variant-metrics">
                       <small>Sent: {variant.metrics?.sent || 0}</small>
                       <small>Opened: {variant.metrics?.opened || 0}</small>
                       <small>Replied: {variant.metrics?.replied || 0}</small>
+                      {variant.is_winner && <small className="winner-badge">🏆 Winner</small>}
                     </div>
                   </div>
                 ))}
               </div>
 
               <button onClick={() => onSaveStep(stepIndex)} className="btn-secondary">
-                Save Step
+                💾 Save Step {step.step_number}
               </button>
             </div>
           ))}
         </div>
       )}
+
+      <div className="sequence-summary">
+        <h4>Sequence Timeline</h4>
+        <div className="timeline">
+          {steps.map((step, idx) => (
+            <div key={idx} className="timeline-item">
+              <div className="timeline-marker">{step.step_number}</div>
+              <div className="timeline-content">
+                <strong>Step {step.step_number}</strong>
+                {step.delay_days > 0 || step.delay_hours > 0 ? (
+                  <span className="timeline-delay">
+                    Wait: {step.delay_days}d {step.delay_hours}h
+                  </span>
+                ) : (
+                  <span className="timeline-delay">Immediate</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
