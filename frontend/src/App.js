@@ -1323,6 +1323,13 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
+          <Route path="/messages" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <MessagesPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
           <Route path="/analytics" element={
             <ProtectedRoute>
               <DashboardLayout>
