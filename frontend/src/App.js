@@ -439,7 +439,9 @@ const CampaignsPage = () => {
 const LeadsPage = () => {
   const [leads, setLeads] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [newLead, setNewLead] = useState({ name: '', email: '', linkedin_url: '', company: '', title: '' });
+  const [importText, setImportText] = useState('');
 
   useEffect(() => {
     fetchLeads();
@@ -466,6 +468,25 @@ const LeadsPage = () => {
     }
   };
 
+  const handleImport = async () => {
+    try {
+      // Parse CSV format: name,email,linkedin_url,company,title
+      const lines = importText.trim().split('\n');
+      const leads = lines.slice(1).map(line => {
+        const [name, email, linkedin_url, company, title] = line.split(',').map(s => s.trim());
+        return { name, email, linkedin_url, company, title };
+      }).filter(lead => lead.name);
+
+      const response = await api.post('/leads/import', { leads });
+      toast.success(`Imported ${response.data.count} leads!`);
+      setShowImport(false);
+      setImportText('');
+      fetchLeads();
+    } catch (error) {
+      toast.error('Failed to import leads');
+    }
+  };
+
   return (
     <div className="page-container" data-testid="leads-page">
       <div className="page-header">
@@ -473,10 +494,36 @@ const LeadsPage = () => {
           <h1 className="page-title">Leads</h1>
           <p className="page-subtitle">Manage your contact list</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary" data-testid="add-lead-btn">
-          + Add Lead
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button onClick={() => setShowImport(true)} className="btn-secondary" data-testid="import-leads-btn">
+            📥 Import Contacts
+          </button>
+          <button onClick={() => setShowCreate(true)} className="btn-primary" data-testid="add-lead-btn">
+            + Add Lead
+          </button>
+        </div>
       </div>
+
+      {showImport && (
+        <div className="create-form">
+          <h3>Import Contacts (CSV)</h3>
+          <p style={{ color: '#a0a0b0', marginBottom: '1rem' }}>
+            Paste CSV data with headers: name,email,linkedin_url,company,title
+          </p>
+          <textarea
+            placeholder="name,email,linkedin_url,company,title&#10;John Doe,john@example.com,https://linkedin.com/in/johndoe,Acme Inc,CTO"
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            className="input"
+            rows="8"
+            data-testid="import-textarea"
+          />
+          <div className="form-actions">
+            <button onClick={handleImport} className="btn-primary" data-testid="submit-import-btn">Import</button>
+            <button onClick={() => setShowImport(false)} className="btn-secondary">Cancel</button>
+          </div>
+        </div>
+      )}
 
       {showCreate && (
         <div className="create-form">
