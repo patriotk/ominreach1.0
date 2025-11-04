@@ -240,6 +240,7 @@ const DashboardLayout = ({ children }) => {
     { path: '/leads', label: 'Leads', icon: '👥' },
     { path: '/analytics', label: 'Analytics', icon: '📈' },
     { path: '/research', label: 'Research', icon: '🔍' },
+    { path: '/settings', label: 'Settings', icon: '⚙️' },
   ];
 
   return (
