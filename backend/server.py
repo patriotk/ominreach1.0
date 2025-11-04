@@ -345,6 +345,32 @@ async def delete_lead(lead_id: str, current_user: User = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Lead not found")
     return {"message": "Lead deleted successfully"}
 
+@api_router.post("/leads/import")
+async def bulk_import_leads(import_data: BulkImportLeadsRequest, current_user: User = Depends(get_current_user)):
+    """
+    Bulk import leads from CSV or other sources
+    """
+    imported_count = 0
+    leads_to_insert = []
+    
+    for lead_data in import_data.leads:
+        lead = Lead(
+            name=lead_data.get("name", ""),
+            email=lead_data.get("email"),
+            linkedin_url=lead_data.get("linkedin_url"),
+            company=lead_data.get("company"),
+            title=lead_data.get("title"),
+            campaign_id=import_data.campaign_id,
+            user_id=current_user.id
+        )
+        leads_to_insert.append(lead.model_dump())
+        imported_count += 1
+    
+    if leads_to_insert:
+        await db.leads.insert_many(leads_to_insert)
+    
+    return {"message": f"Successfully imported {imported_count} leads", "count": imported_count}
+
 # ============ CAMPAIGN ROUTES ============
 
 @api_router.post("/campaigns", response_model=Campaign)
