@@ -298,6 +298,12 @@ export const CampaignBuilder = () => {
 
       <div className="builder-tabs">
         <button
+          className={`tab ${activeTab === 'product' ? 'active' : ''}`}
+          onClick={() => setActiveTab('product')}
+        >
+          📦 Product Info
+        </button>
+        <button
           className={`tab ${activeTab === 'steps' ? 'active' : ''}`}
           onClick={() => setActiveTab('steps')}
         >
@@ -324,12 +330,25 @@ export const CampaignBuilder = () => {
       </div>
 
       <div className="builder-content">
+        {activeTab === 'product' && (
+          <ProductInfoEditor
+            campaign={campaign}
+            onSave={saveCampaignEdits}
+            campaignEdits={campaignEdits}
+            setCampaignEdits={setCampaignEdits}
+            editingCampaign={editingCampaign}
+            setEditingCampaign={setEditingCampaign}
+          />
+        )}
+
         {activeTab === 'steps' && (
           <StepsBuilder
             campaign={campaign}
             onAddStep={addStep}
             onUpdateVariant={updateVariant}
             onSaveStep={saveStep}
+            leads={leads}
+            generateAIMessage={generateAIMessage}
           />
         )}
 
