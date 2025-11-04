@@ -511,6 +511,7 @@ const LeadsPage = () => {
   const [leads, setLeads] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [editingLead, setEditingLead] = useState(null);
   const [newLead, setNewLead] = useState({ name: '', email: '', linkedin_url: '', company: '', title: '' });
   const [importText, setImportText] = useState('');
 
@@ -536,6 +537,30 @@ const LeadsPage = () => {
       fetchLeads();
     } catch (error) {
       toast.error('Failed to add lead');
+    }
+  };
+
+  const handleUpdate = async () => {
+    try {
+      await api.patch(`/leads/${editingLead.id}`, editingLead);
+      toast.success('Lead updated!');
+      setEditingLead(null);
+      fetchLeads();
+    } catch (error) {
+      toast.error('Failed to update lead');
+    }
+  };
+
+  const handleDelete = async (leadId) => {
+    if (!window.confirm('Delete this lead?')) return;
+    
+    try {
+      await api.delete(`/leads/${leadId}`);
+      toast.success('Lead deleted!');
+      setEditingLead(null);
+      fetchLeads();
+    } catch (error) {
+      toast.error('Failed to delete lead');
     }
   };
 
@@ -642,6 +667,54 @@ const LeadsPage = () => {
         </div>
       )}
 
+      {editingLead && (
+        <div className="modal-overlay" onClick={() => setEditingLead(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Edit Lead</h3>
+            <input
+              type="text"
+              placeholder="Name"
+              value={editingLead.name}
+              onChange={(e) => setEditingLead({ ...editingLead, name: e.target.value })}
+              className="input"
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={editingLead.email || ''}
+              onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })}
+              className="input"
+            />
+            <input
+              type="text"
+              placeholder="LinkedIn URL"
+              value={editingLead.linkedin_url || ''}
+              onChange={(e) => setEditingLead({ ...editingLead, linkedin_url: e.target.value })}
+              className="input"
+            />
+            <input
+              type="text"
+              placeholder="Company"
+              value={editingLead.company || ''}
+              onChange={(e) => setEditingLead({ ...editingLead, company: e.target.value })}
+              className="input"
+            />
+            <input
+              type="text"
+              placeholder="Title"
+              value={editingLead.title || ''}
+              onChange={(e) => setEditingLead({ ...editingLead, title: e.target.value })}
+              className="input"
+            />
+            <div className="form-actions">
+              <button onClick={handleUpdate} className="btn-primary">Save Changes</button>
+              <button onClick={() => handleDelete(editingLead.id)} className="btn-danger">Delete</button>
+              <button onClick={() => setEditingLead(null)} className="btn-secondary">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="leads-table">
         {leads.length === 0 ? (
           <div className="empty-state">
@@ -653,9 +726,11 @@ const LeadsPage = () => {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>LinkedIn</th>
                 <th>Company</th>
                 <th>Title</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -663,10 +738,32 @@ const LeadsPage = () => {
                 <tr key={lead.id} data-testid={`lead-${lead.id}`}>
                   <td>{lead.name}</td>
                   <td>{lead.email || '-'}</td>
+                  <td>
+                    {lead.linkedin_url ? (
+                      <a 
+                        href={lead.linkedin_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="linkedin-table-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View Profile
+                      </a>
+                    ) : '-'}
+                  </td>
                   <td>{lead.company || '-'}</td>
                   <td>{lead.title || '-'}</td>
                   <td>
                     {lead.call_booked ? '✅ Booked' : lead.date_contacted ? '📧 Contacted' : '⏳ New'}
+                  </td>
+                  <td>
+                    <button 
+                      onClick={() => setEditingLead(lead)}
+                      className="btn-edit"
+                      data-testid={`edit-lead-${lead.id}`}
+                    >
+                      Edit
+                    </button>
                   </td>
                 </tr>
               ))}
