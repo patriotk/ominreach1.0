@@ -763,8 +763,8 @@ const ResearchPage = () => {
   };
 
   const handleResearch = async (lead) => {
-    if (!lead.linkedin_url) {
-      toast.error('No LinkedIn URL provided');
+    if (!lead.linkedin_url && !lead.name) {
+      toast.error('Lead needs at least a name to research');
       return;
     }
 
@@ -772,12 +772,17 @@ const ResearchPage = () => {
     try {
       const response = await api.post('/research/persona', {
         lead_id: lead.id,
-        linkedin_url: lead.linkedin_url
+        linkedin_url: lead.linkedin_url || `https://linkedin.com/search?q=${encodeURIComponent(lead.name + ' ' + lead.company)}`
       });
-      toast.success('Persona generated!');
-      fetchLeads();
+      
+      if (response.data.persona) {
+        toast.success('Persona generated successfully!');
+        fetchLeads();
+      } else {
+        toast.error(response.data.message || 'Research failed');
+      }
     } catch (error) {
-      toast.error('Research failed');
+      toast.error('Research failed - check your Perplexity API key in Settings');
     }
     setResearching(null);
   };
@@ -785,28 +790,41 @@ const ResearchPage = () => {
   return (
     <div className="page-container" data-testid="research-page">
       <div className="page-header">
-        <h1 className="page-title">LinkedIn Research</h1>
-        <p className="page-subtitle">AI-powered persona generation from LinkedIn profiles</p>
+        <div>
+          <h1 className="page-title">LinkedIn Research</h1>
+          <p className="page-subtitle">AI-powered persona generation using Perplexity</p>
+        </div>
+      </div>
+
+      <div className="research-info-banner">
+        <h4>How it works:</h4>
+        <p>Perplexity searches the web for public information about each lead (articles, interviews, company news, professional profiles) and generates a comprehensive persona including communication style, goals, pain points, and outreach recommendations.</p>
       </div>
 
       <div className="research-list">
-        {leads.filter(l => l.linkedin_url).length === 0 ? (
+        {leads.length === 0 ? (
           <div className="empty-state">
-            <p>No leads with LinkedIn URLs. Add LinkedIn URLs to leads to start researching.</p>
+            <p>No leads available. Add leads to start researching personas.</p>
           </div>
         ) : (
-          leads.filter(l => l.linkedin_url).map((lead) => (
+          leads.map((lead) => (
             <div key={lead.id} className="research-card" data-testid={`research-lead-${lead.id}`}>
               <div className="research-info">
                 <h3>{lead.name}</h3>
-                <p>{lead.company} • {lead.title}</p>
-                <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer" className="linkedin-link">
-                  View LinkedIn Profile →
-                </a>
+                <p>{lead.title || 'Position not specified'} • {lead.company || 'Company not specified'}</p>
+                {lead.email && <p className="lead-contact">📧 {lead.email}</p>}
+                {lead.linkedin_url && (
+                  <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer" className="linkedin-link">
+                    View LinkedIn Profile →
+                  </a>
+                )}
                 {lead.persona && (
                   <div className="persona-result">
-                    <strong>Persona:</strong>
-                    <p>{lead.persona}</p>
+                    <div className="persona-header">
+                      <strong>🎯 Generated Persona</strong>
+                      {lead.score && <span className="persona-score">{lead.score}/10</span>}
+                    </div>
+                    <p style={{ whiteSpace: 'pre-wrap' }}>{lead.persona}</p>
                   </div>
                 )}
               </div>
@@ -816,7 +834,16 @@ const ResearchPage = () => {
                 disabled={researching === lead.id}
                 data-testid={`research-btn-${lead.id}`}
               >
-                {researching === lead.id ? 'Researching...' : lead.persona ? '🔄 Re-research' : '🔍 Research'}
+                {researching === lead.id ? (
+                  <>
+                    <span className="spinner-small"></span>
+                    Researching...
+                  </>
+                ) : lead.persona ? (
+                  '🔄 Re-research'
+                ) : (
+                  '🔍 Research Persona'
+                )}
               </button>
             </div>
           ))
