@@ -24,8 +24,9 @@ export const CampaignBuilder = () => {
   const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('steps'); // steps, schedule, leads, analytics
+  const [activeTab, setActiveTab] = useState('steps');
   const [leads, setLeads] = useState([]);
+  const [initializingSteps, setInitializingSteps] = useState(false);
 
   useEffect(() => {
     if (campaignId) {
@@ -38,10 +39,101 @@ export const CampaignBuilder = () => {
     try {
       const response = await api.get(`/campaigns/${campaignId}`);
       setCampaign(response.data);
+      
+      // Auto-initialize 3 steps if campaign is new
+      if (!response.data.message_steps || response.data.message_steps.length === 0) {
+        await initializeDefaultSteps(response.data);
+      }
     } catch (error) {
       toast.error('Failed to load campaign');
     }
     setLoading(false);
+  };
+
+  const initializeDefaultSteps = async (campaignData) => {
+    if (initializingSteps) return;
+    setInitializingSteps(true);
+
+    const channel = campaignData.goal_type;
+    const defaultSteps = [
+      {
+        step_number: 1,
+        channel: channel,
+        delay_days: 0,
+        delay_hours: 0,
+        variants: [
+          { 
+            id: `var-1a-${Date.now()}`, 
+            name: 'Variant A', 
+            subject: channel === 'email' ? 'Initial outreach' : '',
+            content: `Hi {{first_name}},\n\nI noticed your work at {{company}}...`,
+            percentage: 50
+          },
+          { 
+            id: `var-1b-${Date.now()}`, 
+            name: 'Variant B', 
+            subject: channel === 'email' ? 'Quick question' : '',
+            content: `Hello {{first_name}},\n\nYour role as {{job_title}} caught my attention...`,
+            percentage: 50
+          }
+        ]
+      },
+      {
+        step_number: 2,
+        channel: channel,
+        delay_days: 3,
+        delay_hours: 0,
+        variants: [
+          { 
+            id: `var-2a-${Date.now()}`, 
+            name: 'Variant A', 
+            subject: channel === 'email' ? 'Following up' : '',
+            content: `Hi {{first_name}},\n\nI wanted to follow up on my previous message...`,
+            percentage: 50
+          },
+          { 
+            id: `var-2b-${Date.now()}`, 
+            name: 'Variant B', 
+            subject: channel === 'email' ? 'Checking in' : '',
+            content: `{{first_name}},\n\nJust checking if you had a chance to review...`,
+            percentage: 50
+          }
+        ]
+      },
+      {
+        step_number: 3,
+        channel: channel,
+        delay_days: 5,
+        delay_hours: 0,
+        variants: [
+          { 
+            id: `var-3a-${Date.now()}`, 
+            name: 'Variant A', 
+            subject: channel === 'email' ? 'Final follow-up' : '',
+            content: `Hi {{first_name}},\n\nThis is my last attempt to connect...`,
+            percentage: 50
+          },
+          { 
+            id: `var-3b-${Date.now()}`, 
+            name: 'Variant B', 
+            subject: channel === 'email' ? 'One more thing' : '',
+            content: `{{first_name}},\n\nBefore I close the loop, I wanted to share...`,
+            percentage: 50
+          }
+        ]
+      }
+    ];
+
+    try {
+      for (const step of defaultSteps) {
+        await api.post(`/campaigns/${campaignId}/steps`, step);
+      }
+      toast.success('3-step sequence initialized!');
+      fetchCampaign();
+    } catch (error) {
+      console.error('Failed to initialize steps:', error);
+    }
+    setInitializingSteps(false);
   };
 
   const fetchLeads = async () => {
