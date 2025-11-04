@@ -1491,6 +1491,13 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
+          <Route path="/ai-studio" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AIAgentStudio />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
           <Route path="/settings" element={
             <ProtectedRoute>
               <DashboardLayout>
