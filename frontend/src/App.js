@@ -354,7 +354,7 @@ const CampaignsPage = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ 
     name: '', 
-    goal_type: 'hybrid',
+    goal_type: 'email',  // Changed default to email only
     target_persona: '' 
   });
 
@@ -381,7 +381,7 @@ const CampaignsPage = () => {
       const response = await api.post('/campaigns', newCampaign);
       toast.success('Campaign created!');
       setShowCreate(false);
-      setNewCampaign({ name: '', goal_type: 'hybrid', target_persona: '' });
+      setNewCampaign({ name: '', goal_type: 'email', target_persona: '' });
       
       // Navigate to campaign builder
       navigate(`/campaigns/${response.data.id}/edit`);
@@ -416,17 +416,25 @@ const CampaignsPage = () => {
             data-testid="campaign-name-input"
           />
 
-          <label className="form-label">Goal Type</label>
-          <select
-            value={newCampaign.goal_type}
-            onChange={(e) => setNewCampaign({ ...newCampaign, goal_type: e.target.value })}
-            className="input"
-            data-testid="goal-type-select"
-          >
-            <option value="email">Email Only</option>
-            <option value="linkedin">LinkedIn Only</option>
-            <option value="hybrid">Hybrid (Email + LinkedIn)</option>
-          </select>
+          <label className="form-label">Channel *</label>
+          <div className="channel-selector">
+            <button
+              className={`channel-option ${newCampaign.goal_type === 'email' ? 'active' : ''}`}
+              onClick={() => setNewCampaign({ ...newCampaign, goal_type: 'email' })}
+              data-testid="channel-email"
+            >
+              <span className="channel-icon">📧</span>
+              <span>Email Campaign</span>
+            </button>
+            <button
+              className={`channel-option ${newCampaign.goal_type === 'linkedin' ? 'active' : ''}`}
+              onClick={() => setNewCampaign({ ...newCampaign, goal_type: 'linkedin' })}
+              data-testid="channel-linkedin"
+            >
+              <span className="channel-icon">💼</span>
+              <span>LinkedIn Campaign</span>
+            </button>
+          </div>
 
           <label className="form-label">Target Persona (Optional)</label>
           <input
@@ -464,7 +472,9 @@ const CampaignsPage = () => {
                 <h3>{campaign.name}</h3>
                 <p className="campaign-meta">
                   <span className={`status-badge status-${campaign.status}`}>{campaign.status}</span>
-                  <span className="goal-badge">{campaign.goal_type}</span>
+                  <span className={`goal-badge goal-${campaign.goal_type}`}>
+                    {campaign.goal_type === 'email' ? '📧 Email' : '💼 LinkedIn'}
+                  </span>
                   <span>{campaign.lead_ids?.length || 0} leads</span>
                 </p>
                 <p>Steps: {campaign.message_steps?.length || 0} | Variants: {campaign.message_variants?.length || 0}</p>
