@@ -349,9 +349,14 @@ const Dashboard = () => {
 
 // Campaigns Page
 const CampaignsPage = () => {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [newCampaign, setNewCampaign] = useState({ name: '', target_persona: '' });
+  const [newCampaign, setNewCampaign] = useState({ 
+    name: '', 
+    goal_type: 'hybrid',
+    target_persona: '' 
+  });
 
   useEffect(() => {
     fetchCampaigns();
@@ -367,12 +372,19 @@ const CampaignsPage = () => {
   };
 
   const handleCreate = async () => {
+    if (!newCampaign.name) {
+      toast.error('Campaign name is required');
+      return;
+    }
+
     try {
-      await api.post('/campaigns', newCampaign);
+      const response = await api.post('/campaigns', newCampaign);
       toast.success('Campaign created!');
       setShowCreate(false);
-      setNewCampaign({ name: '', target_persona: '' });
-      fetchCampaigns();
+      setNewCampaign({ name: '', goal_type: 'hybrid', target_persona: '' });
+      
+      // Navigate to campaign builder
+      navigate(`/campaigns/${response.data.id}/edit`);
     } catch (error) {
       toast.error('Failed to create campaign');
     }
@@ -386,30 +398,49 @@ const CampaignsPage = () => {
           <p className="page-subtitle">Manage your outreach campaigns</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="btn-primary" data-testid="create-campaign-btn">
-          + Create Campaign
+          + New Campaign
         </button>
       </div>
 
       {showCreate && (
         <div className="create-form">
           <h3>New Campaign</h3>
+          
+          <label className="form-label">Campaign Name *</label>
           <input
             type="text"
-            placeholder="Campaign name"
+            placeholder="E.g., CTO Outreach Q1"
             value={newCampaign.name}
             onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
             className="input"
             data-testid="campaign-name-input"
           />
+
+          <label className="form-label">Goal Type</label>
+          <select
+            value={newCampaign.goal_type}
+            onChange={(e) => setNewCampaign({ ...newCampaign, goal_type: e.target.value })}
+            className="input"
+            data-testid="goal-type-select"
+          >
+            <option value="email">Email Only</option>
+            <option value="linkedin">LinkedIn Only</option>
+            <option value="hybrid">Hybrid (Email + LinkedIn)</option>
+          </select>
+
+          <label className="form-label">Target Persona (Optional)</label>
           <input
             type="text"
-            placeholder="Target persona (optional)"
+            placeholder="E.g., CTOs at B2B SaaS companies"
             value={newCampaign.target_persona}
             onChange={(e) => setNewCampaign({ ...newCampaign, target_persona: e.target.value })}
             className="input"
           />
+
           <div className="form-actions">
-            <button onClick={handleCreate} className="btn-primary" data-testid="submit-campaign-btn">Create</button>
+            <button onClick={handleCreate} className="btn-primary" data-testid="submit-campaign-btn">
+              Create & Configure
+            </button>
             <button onClick={() => setShowCreate(false)} className="btn-secondary">Cancel</button>
           </div>
         </div>
@@ -422,11 +453,39 @@ const CampaignsPage = () => {
           </div>
         ) : (
           campaigns.map((campaign) => (
-            <div key={campaign.id} className="campaign-card" data-testid={`campaign-${campaign.id}`}>
+            <div 
+              key={campaign.id} 
+              className="campaign-card" 
+              data-testid={`campaign-${campaign.id}`}
+              onClick={() => navigate(`/campaigns/${campaign.id}/edit`)}
+              style={{ cursor: 'pointer' }}
+            >
               <div className="campaign-info">
                 <h3>{campaign.name}</h3>
-                <p>Status: <span className={`status-badge status-${campaign.status}`}>{campaign.status}</span></p>
-                <p>Variants: {campaign.message_variants?.length || 0}</p>
+                <p className="campaign-meta">
+                  <span className={`status-badge status-${campaign.status}`}>{campaign.status}</span>
+                  <span className="goal-badge">{campaign.goal_type}</span>
+                  <span>{campaign.lead_ids?.length || 0} leads</span>
+                </p>
+                <p>Steps: {campaign.message_steps?.length || 0} | Variants: {campaign.message_variants?.length || 0}</p>
+                {campaign.metrics && (
+                  <div className="campaign-metrics-preview">
+                    <small>Sent: {campaign.metrics.messages_sent || 0}</small>
+                    <small>Open: {campaign.metrics.open_rate || 0}%</small>
+                    <small>Reply: {campaign.metrics.reply_rate || 0}%</small>
+                    {campaign.metrics.ai_score && (
+                      <small className="ai-score">AI Score: {campaign.metrics.ai_score}/10</small>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="campaign-actions">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); navigate(`/campaigns/${campaign.id}/edit`); }}
+                  className="btn-secondary"
+                >
+                  Edit
+                </button>
               </div>
             </div>
           ))
