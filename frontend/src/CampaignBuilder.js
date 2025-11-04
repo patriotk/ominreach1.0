@@ -652,6 +652,30 @@ const StepsBuilder = ({ campaign, onAddStep, onUpdateVariant, onSaveStep, leads,
         </div>
       )}
 
+      <div className="sequence-summary">
+        <h4>Sequence Timeline</h4>
+        <div className="timeline">
+          {steps.map((step, idx) => (
+            <div key={idx} className="timeline-item">
+              <div className="timeline-marker">{step.step_number}</div>
+              <div className="timeline-content">
+                <strong>Step {step.step_number}</strong>
+                {step.delay_days > 0 || step.delay_hours > 0 ? (
+                  <span className="timeline-delay">
+                    Wait: {step.delay_days}d {step.delay_hours}h
+                  </span>
+                ) : (
+                  <span className="timeline-delay">Immediate</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, editingCampaign, setEditingCampaign }) => {
   const productInfo = campaignEdits.product_info || {};
 
