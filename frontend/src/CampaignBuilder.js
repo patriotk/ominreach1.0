@@ -676,7 +676,6 @@ const StepsBuilder = ({ campaign, onAddStep, onUpdateVariant, onSaveStep, leads,
   );
 };
 
-
 const ScheduleBuilder = ({ campaign, onSaveSchedule }) => {
   const [schedule, setSchedule] = useState(campaign.schedule || {
     start_date: new Date().toISOString().split('T')[0],
