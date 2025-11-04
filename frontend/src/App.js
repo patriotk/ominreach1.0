@@ -1097,6 +1097,197 @@ const SettingsPage = () => {
   );
 };
 
+// Messages/Inbox Page
+const MessagesPage = () => {
+  const [messages, setMessages] = useState([]);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [filter, setFilter] = useState('all'); // all, incoming, outgoing
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    fetchMessages();
+  }, [filter]);
+
+  const fetchMessages = async () => {
+    try {
+      const params = filter !== 'all' ? { direction: filter } : {};
+      const response = await api.get('/messages', { params });
+      setMessages(response.data);
+    } catch (error) {
+      toast.error('Failed to load messages');
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!replyText.trim()) {
+      toast.error('Reply cannot be empty');
+      return;
+    }
+
+    setSending(true);
+    try {
+      await api.post('/messages/reply', {
+        message_id: selectedMessage.id,
+        content: replyText
+      });
+      toast.success('Reply sent!');
+      setReplyText('');
+      setSelectedMessage(null);
+      fetchMessages();
+    } catch (error) {
+      toast.error('Failed to send reply');
+    }
+    setSending(false);
+  };
+
+  const incomingMessages = messages.filter(m => m.direction === 'incoming');
+  const outgoingMessages = messages.filter(m => m.direction === 'outgoing');
+
+  return (
+    <div className="page-container" data-testid="messages-page">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Messages</h1>
+          <p className="page-subtitle">View and respond to campaign messages</p>
+        </div>
+      </div>
+
+      <div className="messages-layout">
+        {/* Sidebar - Message List */}
+        <div className="messages-sidebar">
+          <div className="message-filters">
+            <button
+              className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+              onClick={() => setFilter('all')}
+            >
+              All ({messages.length})
+            </button>
+            <button
+              className={`filter-btn ${filter === 'incoming' ? 'active' : ''}`}
+              onClick={() => setFilter('incoming')}
+            >
+              📥 Inbox ({incomingMessages.length})
+            </button>
+            <button
+              className={`filter-btn ${filter === 'outgoing' ? 'active' : ''}`}
+              onClick={() => setFilter('outgoing')}
+            >
+              📤 Sent ({outgoingMessages.length})
+            </button>
+          </div>
+
+          <div className="messages-list">
+            {messages.length === 0 ? (
+              <div className="empty-state">
+                <p>No messages yet</p>
+              </div>
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`message-item ${selectedMessage?.id === msg.id ? 'selected' : ''} ${msg.direction}`}
+                  onClick={() => setSelectedMessage(msg)}
+                  data-testid={`message-${msg.id}`}
+                >
+                  <div className="message-item-header">
+                    <strong>{msg.lead_name || 'Unknown Lead'}</strong>
+                    <span className="message-time">
+                      {msg.sent_at ? new Date(msg.sent_at).toLocaleDateString() : ''}
+                    </span>
+                  </div>
+                  <div className="message-item-preview">
+                    {msg.subject && <div className="message-subject">{msg.subject}</div>}
+                    <div className="message-preview">{msg.content?.substring(0, 60)}...</div>
+                  </div>
+                  <div className="message-item-meta">
+                    <span className={`direction-badge ${msg.direction}`}>
+                      {msg.direction === 'incoming' ? '📥' : '📤'}
+                    </span>
+                    <span className={`status-indicator status-${msg.status}`}>
+                      {msg.status}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Main - Message Detail & Reply */}
+        <div className="message-detail">
+          {!selectedMessage ? (
+            <div className="empty-state">
+              <p>Select a message to view details</p>
+            </div>
+          ) : (
+            <div className="message-content">
+              <div className="message-header">
+                <div>
+                  <h3>{selectedMessage.lead_name}</h3>
+                  <p>{selectedMessage.lead_email} • {selectedMessage.lead_company}</p>
+                </div>
+                <div className="message-header-meta">
+                  <span className={`status-badge status-${selectedMessage.status}`}>
+                    {selectedMessage.status}
+                  </span>
+                  <span className={`channel-badge`}>
+                    {selectedMessage.channel === 'email' ? '📧 Email' : '💼 LinkedIn'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="message-body">
+                {selectedMessage.subject && (
+                  <div className="message-subject-display">
+                    <strong>Subject:</strong> {selectedMessage.subject}
+                  </div>
+                )}
+                <div className="message-text">
+                  {selectedMessage.content}
+                </div>
+                <div className="message-footer">
+                  <small>
+                    Sent: {selectedMessage.sent_at ? new Date(selectedMessage.sent_at).toLocaleString() : 'N/A'}
+                  </small>
+                  {selectedMessage.opened_at && (
+                    <small>Opened: {new Date(selectedMessage.opened_at).toLocaleString()}</small>
+                  )}
+                  {selectedMessage.replied_at && (
+                    <small>Replied: {new Date(selectedMessage.replied_at).toLocaleString()}</small>
+                  )}
+                </div>
+              </div>
+
+              {selectedMessage.direction === 'incoming' && (
+                <div className="reply-section">
+                  <h4>Reply</h4>
+                  <textarea
+                    placeholder="Type your reply..."
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    className="input"
+                    rows="8"
+                    data-testid="reply-textarea"
+                  />
+                  <button
+                    onClick={handleSendReply}
+                    className="btn-primary"
+                    disabled={sending}
+                    data-testid="send-reply-btn"
+                  >
+                    {sending ? 'Sending...' : '📤 Send Reply'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   return (
     <div className="App">
