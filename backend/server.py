@@ -1045,16 +1045,19 @@ async def get_api_keys(current_user: User = Depends(get_current_user)):
         return {
             "perplexity_configured": False,
             "openai_configured": False,
-            "gemini_configured": False
+            "gemini_configured": False,
+            "resend_configured": False
         }
     
     return {
         "perplexity_configured": bool(integration.get("perplexity_key")),
         "openai_configured": bool(integration.get("openai_key")),
         "gemini_configured": bool(integration.get("gemini_key")),
+        "resend_configured": bool(integration.get("resend_key")),
         "perplexity_key_preview": integration.get("perplexity_key", "")[:8] + "..." if integration.get("perplexity_key") else None,
         "openai_key_preview": integration.get("openai_key", "")[:8] + "..." if integration.get("openai_key") else None,
-        "gemini_key_preview": integration.get("gemini_key", "")[:8] + "..." if integration.get("gemini_key") else None
+        "gemini_key_preview": integration.get("gemini_key", "")[:8] + "..." if integration.get("gemini_key") else None,
+        "resend_key_preview": integration.get("resend_key", "")[:8] + "..." if integration.get("resend_key") else None
     }
 
 # ============ MESSAGES / INBOX ============
