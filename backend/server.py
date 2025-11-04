@@ -649,15 +649,14 @@ Find and analyze:
 - Company information and recent news about {company}
 - Industry trends they're likely focused on
 
-Based on this research, create a comprehensive professional persona including:
-1. Professional Profile: Their role, experience level, and key expertise areas
-2. Communication Style: How they likely prefer to communicate (formal/casual, technical/business-focused)
-3. Professional Goals: What they're likely trying to achieve in their role
-4. Pain Points: Common challenges they face in their position
-5. Decision Criteria: What factors influence their business decisions
-6. Outreach Recommendations: Best approach to engage with them
+Based on this research, create a CONCISE professional persona in ONE PARAGRAPH (4-5 sentences max) that includes:
+- Their role and experience level
+- Communication style (formal/casual, technical/business-focused)
+- Top 2-3 professional priorities or goals
+- Main pain point or challenge
+- Best outreach approach
 
-Format as a clear, actionable persona summary (3-4 paragraphs). Be specific and data-driven."""
+Keep it brief, actionable, and focused. Do not write multiple paragraphs or sections."""
             
             response = await client.post(
                 "https://api.perplexity.ai/chat/completions",
@@ -670,7 +669,7 @@ Format as a clear, actionable persona summary (3-4 paragraphs). Be specific and 
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are an expert B2B sales researcher. Provide detailed, actionable professional personas based on web research."
+                            "content": "You are an expert B2B sales researcher. Create concise, single-paragraph professional personas. Never use multiple paragraphs or bullet points - keep it to 4-5 sentences maximum in ONE paragraph."
                         },
                         {
                             "role": "user",
@@ -679,7 +678,8 @@ Format as a clear, actionable persona summary (3-4 paragraphs). Be specific and 
                     ],
                     "return_images": False,
                     "return_related_questions": False,
-                    "search_recency_filter": "month"
+                    "search_recency_filter": "month",
+                    "temperature": 0.7
                 },
                 timeout=60.0
             )
