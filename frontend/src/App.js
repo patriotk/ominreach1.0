@@ -992,6 +992,13 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <SettingsPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
         </Routes>
       </BrowserRouter>
       <Toaster position="top-right" />
