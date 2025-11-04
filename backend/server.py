@@ -610,7 +610,7 @@ async def delete_campaign(campaign_id: str, current_user: User = Depends(get_cur
 @api_router.post("/research/persona")
 async def research_persona(request: ResearchPersonaRequest, current_user: User = Depends(get_current_user)):
     """
-    Research LinkedIn profile using Perplexity and generate persona
+    Research person using Perplexity and generate persona
     """
     lead = await db.leads.find_one({"id": request.lead_id, "user_id": current_user.id})
     if not lead:
@@ -629,22 +629,35 @@ async def research_persona(request: ResearchPersonaRequest, current_user: User =
             "persona": "Professional with experience in their field. Configure Perplexity API to get detailed persona."
         }
     
-    # Use Perplexity API for research
+    # Extract person info from lead
+    person_name = lead.get("name", "")
+    company = lead.get("company", "")
+    title = lead.get("title", "")
+    
+    # Use Perplexity API for research - search by name and company, not LinkedIn URL
     try:
         async with httpx.AsyncClient() as client:
-            research_query = f"""Research the professional at this LinkedIn profile: {request.linkedin_url}
+            # Search for the person using their name and company
+            research_query = f"""Search for information about {person_name}, {title} at {company}.
 
-Provide a comprehensive persona including:
-- Job title and company
-- Years of experience and seniority level
-- Key responsibilities and expertise areas
+Find and analyze:
+- Their professional background and career history
+- Current role and responsibilities at {company}
+- Areas of expertise and specialization
+- Public speaking, articles, or thought leadership
 - Professional interests and goals
-- Communication style preferences
-- Likely pain points in their role
-- Decision-making criteria
-- Technology affinity
+- Company information and recent news about {company}
+- Industry trends they're likely focused on
 
-Format as a concise persona summary (2-3 paragraphs)."""
+Based on this research, create a comprehensive professional persona including:
+1. Professional Profile: Their role, experience level, and key expertise areas
+2. Communication Style: How they likely prefer to communicate (formal/casual, technical/business-focused)
+3. Professional Goals: What they're likely trying to achieve in their role
+4. Pain Points: Common challenges they face in their position
+5. Decision Criteria: What factors influence their business decisions
+6. Outreach Recommendations: Best approach to engage with them
+
+Format as a clear, actionable persona summary (3-4 paragraphs). Be specific and data-driven."""
             
             response = await client.post(
                 "https://api.perplexity.ai/chat/completions",
@@ -654,36 +667,70 @@ Format as a concise persona summary (2-3 paragraphs)."""
                 },
                 json={
                     "model": "sonar-pro",
-                    "messages": [{"role": "user", "content": research_query}],
-                    "return_images": False
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are an expert B2B sales researcher. Provide detailed, actionable professional personas based on web research."
+                        },
+                        {
+                            "role": "user",
+                            "content": research_query
+                        }
+                    ],
+                    "return_images": False,
+                    "return_related_questions": False,
+                    "search_recency_filter": "month"
                 },
-                timeout=30.0
+                timeout=60.0
             )
             
             if response.status_code == 200:
                 result = response.json()
                 persona = result.get("choices", [{}])[0].get("message", {}).get("content", "")
                 
-                # Update lead with persona
+                # Also get citations for transparency
+                citations = result.get("citations", [])
+                persona_with_sources = persona
+                if citations:
+                    persona_with_sources += f"\n\nSources: {', '.join(citations[:3])}"
+                
+                # Calculate a basic score
+                score = 7.5  # Default score, could be enhanced with sentiment analysis
+                
+                # Update lead with persona and score
                 await db.leads.update_one(
                     {"id": request.lead_id},
                     {"$set": {
-                        "persona": persona,
+                        "persona": persona_with_sources,
+                        "score": score,
                         "date_contacted": datetime.now(timezone.utc)
                     }}
                 )
                 
-                return {"lead_id": request.lead_id, "persona": persona}
-            else:
                 return {
-                    "message": f"Research service error: {response.status_code}",
-                    "persona": "Professional profile - research pending"
+                    "lead_id": request.lead_id,
+                    "persona": persona_with_sources,
+                    "score": score,
+                    "citations": citations[:5]
                 }
+            else:
+                error_detail = f"API returned status {response.status_code}"
+                logging.error(f"Perplexity API error: {error_detail}")
+                return {
+                    "message": f"Research service error: {error_detail}",
+                    "persona": "Unable to complete research. Please verify your API key is valid."
+                }
+    except httpx.TimeoutException:
+        logging.error("Perplexity API timeout")
+        return {
+            "message": "Research timed out. Please try again.",
+            "persona": "Research in progress - please retry in a moment."
+        }
     except Exception as e:
         logging.error(f"Perplexity API error: {str(e)}")
         return {
             "message": f"Research error: {str(e)}",
-            "persona": "Professional profile - research pending"
+            "persona": "Unable to complete research. Please check your API key and try again."
         }
 
 # ============ ANALYTICS & AI INSIGHTS ============
