@@ -86,6 +86,7 @@ class Campaign(BaseModel):
     schedule: Optional[Dict[str, Any]] = None
     metrics: Dict[str, Any] = Field(default_factory=dict)
     target_persona: Optional[str] = None
+    product_info: Dict[str, Any] = Field(default_factory=dict)  # Product information
     lead_ids: List[str] = []
     user_id: str
     team_id: Optional[str] = None
