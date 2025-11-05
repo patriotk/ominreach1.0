@@ -595,14 +595,24 @@ const LeadsPage = () => {
           <p className="page-subtitle">Manage your contact list</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
+          <button onClick={() => setShowPhantombuster(true)} className="btn-secondary" data-testid="phantombuster-import-btn">
+            🤖 Import from Phantombuster
+          </button>
           <button onClick={() => setShowImport(true)} className="btn-secondary" data-testid="import-leads-btn">
-            📥 Import Contacts
+            📥 Import CSV
           </button>
           <button onClick={() => setShowCreate(true)} className="btn-primary" data-testid="add-lead-btn">
             + Add Lead
           </button>
         </div>
       </div>
+
+      {showPhantombuster && (
+        <PhantombusterImport
+          onClose={() => setShowPhantombuster(false)}
+          onImportComplete={fetchLeads}
+        />
+      )}
 
       {showImport && (
         <div className="create-form">
