@@ -1238,10 +1238,16 @@ const SettingsPage = () => {
               <h3>LinkedIn</h3>
               {getStatusBadge(integrations?.integrations?.linkedin?.status)}
             </div>
-            <p>Automated outreach and profile research</p>
-            <div className="integration-info">
-              Currently in mock mode - safe for testing
-            </div>
+            <p>Automated outreach via Phantombuster</p>
+            {integrations?.integrations?.linkedin?.connected ? (
+              <div className="integration-info">
+                ✅ Phantombuster connected - Ready to send LinkedIn messages!
+              </div>
+            ) : (
+              <div className="integration-warning">
+                Add Phantombuster API key above to enable
+              </div>
+            )}
           </div>
 
           <div className="integration-card">
