@@ -803,11 +803,12 @@ async def get_ai_agent_config(campaign_id: Optional[str] = None, current_user: U
     if campaign_id:
         query["campaign_id"] = campaign_id
     
-    config = await db.ai_agent_configs.find_one(query)
+    config = await db.ai_agent_configs.find_one(query, {"_id": 0})
     
     if not config:
         # Return defaults
-        return AIAgentConfig(user_id=current_user.id).model_dump()
+        default_config = AIAgentConfig(user_id=current_user.id)
+        return default_config.model_dump()
     
     return config
 
