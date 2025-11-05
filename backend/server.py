@@ -1696,6 +1696,181 @@ async def send_outreach(campaign_id: str, lead_ids: List[str], variant_id: str, 
         "using_real_email": bool(channel == "email" and resend_api_key)
     }
 
+# ============ PHANTOMBUSTER INTEGRATION ============
+
+@api_router.get("/phantombuster/agents")
+async def list_phantombuster_agents(current_user: User = Depends(get_current_user)):
+    \"\"\"List available Phantombuster agents\"\"\"
+    user_keys = await db.integrations.find_one({"user_id": current_user.id, "type": "api_keys"})
+    pb_key = user_keys.get("phantombuster_key") if user_keys else None
+    
+    if not pb_key:
+        pb_key = os.getenv("PHANTOMBUSTER_API_KEY")
+    
+    if not pb_key:
+        raise HTTPException(status_code=400, detail="Phantombuster API key not configured")
+    
+    pb_service = PhantombusterService(pb_key)
+    agents = await pb_service.list_agents()
+    
+    return {\"agents\": agents}
+
+@api_router.post(\"/phantombuster/import-leads\")
+async def import_leads_from_phantombuster(agent_id: str, current_user: User = Depends(get_current_user)):
+    \"\"\"Import leads from Phantombuster agent output\"\"\"
+    user_keys = await db.integrations.find_one({\"user_id\": current_user.id, \"type\": \"api_keys\"})
+    pb_key = user_keys.get(\"phantombuster_key\") if user_keys else None
+    \n    if not pb_key:
+        pb_key = os.getenv(\"PHANTOMBUSTER_API_KEY\")
+    \n    if not pb_key:
+        raise HTTPException(status_code=400, detail=\"Phantombuster API key not configured\")
+    \n    pb_service = PhantombusterService(pb_key)
+    \n    # Get agent output
+    output_data = await pb_service.get_agent_output(agent_id)
+    \n    if not output_data or not output_data.get(\"resultObject\"):
+        raise HTTPException(status_code=404, detail=\"No output available for this agent\")
+    \n    # Download output file
+    output_url = output_data[\"resultObject\"].get(\"outputUrl\")
+    if not output_url:
+        raise HTTPException(status_code=404, detail=\"No output URL found\")
+    \n    content = await pb_service.download_output_file(output_url)
+    \n    # Parse output (try CSV first, then JSON)
+    leads_data = []
+    if output_url.endswith('.csv'):
+        leads_data = pb_service.parse_csv_output(content)
+    else:
+        leads_data = pb_service.parse_json_output(content)
+    \n    # Transform to OmniReach lead format
+    imported_leads = []
+    for data in leads_data:
+        lead = Lead(
+            name=data.get(\"fullName\") or data.get(\"name\") or \"Unknown\",
+            email=data.get(\"email\"),
+            linkedin_url=data.get(\"profileUrl\") or data.get(\"url\"),
+            company=data.get(\"company\") or data.get(\"companyName\"),
+            title=data.get(\"title\") or data.get(\"headline\"),
+            user_id=current_user.id
+        )
+        await db.leads.insert_one(lead.model_dump())
+        imported_leads.append(lead)
+    \n    return {
+        \"message\": f\"Imported {len(imported_leads)} leads from Phantombuster\",
+        \"count\": len(imported_leads),
+        \"leads\": [l.model_dump() for l in imported_leads[:10]]  # Return first 10
+    }
+
+@api_router.post(\"/phantombuster/launch-campaign\")
+async def launch_phantombuster_campaign(
+    campaign_id: str,
+    step_number: int,
+    variant_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    \"\"\"Launch LinkedIn campaign via Phantombuster\"\"\"
+    # Get campaign
+    campaign = await db.campaigns.find_one({\"id\": campaign_id, \"user_id\": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail=\"Campaign not found\")
+    \n    # Get API key and session cookie
+    user_keys = await db.integrations.find_one({\"user_id\": current_user.id, \"type\": \"api_keys\"})
+    pb_key = user_keys.get(\"phantombuster_key\") if user_keys else None
+    session_cookie = user_keys.get(\"linkedin_session_cookie\") if user_keys else None
+    \n    if not pb_key:
+        pb_key = os.getenv(\"PHANTOMBUSTER_API_KEY\")
+    \n    if not pb_key or not session_cookie:
+        raise HTTPException(
+            status_code=400,
+            detail=\"Phantombuster API key and LinkedIn session cookie required. Add in Settings.\"
+        )
+    \n    # Get leads for campaign
+    lead_ids = campaign.get(\"lead_ids\", [])
+    leads = await db.leads.find({\"id\": {\"$in\": lead_ids}}).to_list(len(lead_ids))
+    \n    # Get message variant
+    variant = None
+    step_info = None
+    for step in campaign.get(\"message_steps\", []):
+        if step.get(\"step_number\") == step_number:
+            step_info = step
+            for v in step.get(\"variants\", []):
+                if v[\"id\"] == variant_id:
+                    variant = v
+                    break
+            break
+    \n    if not variant:
+        raise HTTPException(status_code=404, detail=\"Variant not found\")
+    \n    # Prepare LinkedIn URLs and messages
+    profile_urls = []
+    personalized_messages = {}
+    campaign_service = CampaignService(db)
+    \n    for lead in leads:
+        if not lead.get(\"linkedin_url\"):
+            continue
+        \n        profile_urls.append(lead[\"linkedin_url\"])
+        \n        # Personalize message
+        personalized_msg = campaign_service.apply_personalization(variant[\"content\"], lead)
+        personalized_messages[lead[\"linkedin_url\"]] = personalized_msg
+    \n    if not profile_urls:
+        raise HTTPException(status_code=400, detail=\"No leads with LinkedIn URLs found\")
+    \n    # Launch Phantombuster
+    pb_service = PhantombusterService(pb_key)
+    \n    # Use LinkedIn Message Sender for existing connections
+    # or Auto Connect for new connections (based on step)
+    phantom_id = \"9227\" if step_number > 1 else \"2818\"
+    \n    launch_result = await pb_service.launch_agent(
+        phantom_id,
+        {
+            \"sessionCookie\": session_cookie,
+            \"profileUrls\": profile_urls,
+            \"message\": variant[\"content\"],  # Default message
+            \"numberOfMessagesPerLaunch\": len(profile_urls)
+        }
+    )
+    \n    # Store job info for tracking
+    await db.phantombuster_jobs.insert_one({
+        \"campaign_id\": campaign_id,
+        \"step_number\": step_number,
+        \"variant_id\": variant_id,
+        \"agent_id\": phantom_id,
+        \"container_id\": launch_result.get(\"containerId\"),
+        \"status\": \"running\",
+        \"lead_count\": len(profile_urls),
+        \"created_at\": datetime.now(timezone.utc),
+        \"user_id\": current_user.id
+    })
+    \n    return {
+        \"message\": f\"Launched LinkedIn automation for {len(profile_urls)} leads\",
+        \"job_id\": launch_result.get(\"containerId\"),
+        \"status\": \"running\",
+        \"leads_count\": len(profile_urls)
+    }
+
+@api_router.get(\"/phantombuster/job-status/{job_id}\")
+async def get_phantombuster_job_status(job_id: str, current_user: User = Depends(get_current_user)):
+    \"\"\"Get status of Phantombuster job\"\"\"
+    job = await db.phantombuster_jobs.find_one({\"container_id\": job_id, \"user_id\": current_user.id})
+    \n    if not job:
+        raise HTTPException(status_code=404, detail=\"Job not found\")
+    \n    # Get API key
+    user_keys = await db.integrations.find_one({\"user_id\": current_user.id, \"type\": \"api_keys\"})
+    pb_key = user_keys.get(\"phantombuster_key\") if user_keys else os.getenv(\"PHANTOMBUSTER_API_KEY\")
+    \n    if not pb_key:
+        raise HTTPException(status_code=400, detail=\"Phantombuster API key not configured\")
+    \n    pb_service = PhantombusterService(pb_key)
+    agent_status = await pb_service.get_agent_status(job[\"agent_id\"])
+    \n    # Update job status
+    current_status = agent_status.get(\"status\", \"unknown\")
+    await db.phantombuster_jobs.update_one(
+        {\"container_id\": job_id},
+        {\"$set\": {\"status\": current_status, \"updated_at\": datetime.now(timezone.utc)}}
+    )
+    \n    return {
+        \"job_id\": job_id,
+        \"status\": current_status,
+        \"agent_id\": job[\"agent_id\"],
+        \"campaign_id\": job[\"campaign_id\"],
+        \"lead_count\": job.get(\"lead_count\", 0)
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
