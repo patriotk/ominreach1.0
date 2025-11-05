@@ -1016,12 +1016,13 @@ const SettingsPage = () => {
         openai_key: apiKeys.openai || undefined,
         gemini_key: apiKeys.gemini || undefined,
         resend_key: apiKeys.resend || undefined,
-        phantombuster_key: apiKeys.phantombuster || undefined
+        phantombuster_key: apiKeys.phantombuster || undefined,
+        linkedin_session_cookie: apiKeys.linkedin_cookie || undefined
       };
       
       await api.post('/settings/api-keys', payload);
       toast.success('API keys saved!');
-      setApiKeys({ perplexity: '', openai: '', gemini: '', resend: '', phantombuster: '' });
+      setApiKeys({ perplexity: '', openai: '', gemini: '', resend: '', phantombuster: '', linkedin_cookie: '' });
       fetchIntegrations();
       fetchApiKeys();
     } catch (error) {
