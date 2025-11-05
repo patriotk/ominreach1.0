@@ -1130,6 +1130,21 @@ const SettingsPage = () => {
             </small>
           </div>
 
+          <div className="form-group">
+            <label className="form-label">Phantombuster API Key (LinkedIn Automation)</label>
+            <input
+              type="password"
+              placeholder="Already configured ✅"
+              value={apiKeys.phantombuster}
+              onChange={(e) => setApiKeys({ ...apiKeys, phantombuster: e.target.value })}
+              className="input"
+              data-testid="phantombuster-key-input"
+            />
+            <small style={{ color: '#22c55e', display: 'block', marginTop: '0.5rem' }}>
+              ✅ Phantombuster key already configured in backend!
+            </small>
+          </div>
+
           <button onClick={saveApiKeys} className="btn-primary" data-testid="save-api-keys-btn">
             💾 Save API Keys
           </button>
