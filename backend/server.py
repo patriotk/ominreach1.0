@@ -241,6 +241,7 @@ class APIKeysUpdate(BaseModel):
     gemini_key: Optional[str] = None
     resend_key: Optional[str] = None
     phantombuster_key: Optional[str] = None
+    linkedin_session_cookie: Optional[str] = None
 
 # ============ AUTH HELPERS ============
 
