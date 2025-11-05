@@ -1520,14 +1520,23 @@ async def send_outreach(campaign_id: str, lead_ids: List[str], variant_id: str, 
     # Get leads
     leads = await db.leads.find({"id": {"$in": lead_ids}}).to_list(len(lead_ids))
     
-    # Get Resend API key if email campaign
+    # Get API keys based on channel
     resend_api_key = None
+    phantombuster_api_key = None
+    
     if channel == "email":
         user_keys = await db.integrations.find_one({"user_id": current_user.id, "type": "api_keys"})
         resend_api_key = user_keys.get("resend_key") if user_keys else None
         
         if not resend_api_key:
             resend_api_key = os.getenv("RESEND_API_KEY")
+    
+    elif channel == "linkedin":
+        user_keys = await db.integrations.find_one({"user_id": current_user.id, "type": "api_keys"})
+        phantombuster_api_key = user_keys.get("phantombuster_key") if user_keys else None
+        
+        if not phantombuster_api_key:
+            phantombuster_api_key = os.getenv("PHANTOMBUSTER_API_KEY")
     
     for lead in leads:
         # Apply personalization
