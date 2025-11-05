@@ -1583,6 +1583,61 @@ async def send_outreach(campaign_id: str, lead_ids: List[str], variant_id: str, 
             except Exception as e:
                 logging.error(f"Email send error: {str(e)}")
                 failed_count += 1
+        
+        elif channel == "linkedin" and phantombuster_api_key:
+            # Send via Phantombuster
+            try:
+                # Prepare Phantombuster message data
+                linkedin_url = lead.get("linkedin_url", "")
+                
+                if not linkedin_url:
+                    logging.warning(f"No LinkedIn URL for lead {lead.get('name')}")
+                    failed_count += 1
+                    continue
+                
+                # Launch Phantombuster LinkedIn Message Sender
+                async with httpx.AsyncClient() as client:
+                    pb_response = await client.post(
+                        "https://api.phantombuster.com/api/v2/agents/launch",
+                        headers={
+                            "X-Phantombuster-Key": phantombuster_api_key,
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "id": "9227",  # LinkedIn Message Sender Phantom ID
+                            "argument": {
+                                "profileUrls": [linkedin_url],
+                                "message": personalized_content,
+                                "numberOfMessagesPerLaunch": 1
+                            }
+                        },
+                        timeout=30.0
+                    )
+                    
+                    if pb_response.status_code == 200:
+                        # Store message
+                        message = Message(
+                            campaign_id=campaign_id,
+                            lead_id=lead.get("id"),
+                            step_number=step_info.get("step_number", 1),
+                            variant_id=variant_id,
+                            channel=channel,
+                            direction="outgoing",
+                            content=personalized_content,
+                            status="sent",
+                            sent_at=datetime.now(timezone.utc),
+                            user_id=current_user.id
+                        )
+                        await db.messages.insert_one(message.model_dump())
+                        sent_count += 1
+                    else:
+                        logging.error(f"Phantombuster error: {pb_response.text}")
+                        failed_count += 1
+            
+            except Exception as e:
+                logging.error(f"LinkedIn send error: {str(e)}")
+                failed_count += 1
+        
         else:
             # Mock send (LinkedIn or no API key)
             message = Message(
