@@ -239,6 +239,7 @@ class APIKeysUpdate(BaseModel):
     openai_key: Optional[str] = None
     gemini_key: Optional[str] = None
     resend_key: Optional[str] = None
+    phantombuster_key: Optional[str] = None
 
 # ============ AUTH HELPERS ============
 
