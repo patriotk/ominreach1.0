@@ -1165,6 +1165,21 @@ const SettingsPage = () => {
             </small>
           </div>
 
+          <div className="form-group">
+            <label className="form-label">LinkedIn Session Cookie (Required for Phantombuster)</label>
+            <textarea
+              placeholder="li_at cookie value from LinkedIn... Get via Phantombuster Chrome extension"
+              value={apiKeys.linkedin_cookie}
+              onChange={(e) => setApiKeys({ ...apiKeys, linkedin_cookie: e.target.value })}
+              className="input"
+              rows="3"
+              data-testid="linkedin-cookie-input"
+            />
+            <small style={{ color: '#a0a0b0', display: 'block', marginTop: '0.5rem' }}>
+              Get cookie: Install <a href="https://chrome.google.com/webstore/detail/phantombuster/mdlnjfcpdiaclglfbdkbleiamdafilil" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Phantombuster extension</a> → Visit LinkedIn → Copy cookie
+            </small>
+          </div>
+
           <button onClick={saveApiKeys} className="btn-primary" data-testid="save-api-keys-btn">
             💾 Save API Keys
           </button>
