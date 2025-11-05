@@ -996,12 +996,13 @@ const SettingsPage = () => {
         perplexity_key: apiKeys.perplexity || undefined,
         openai_key: apiKeys.openai || undefined,
         gemini_key: apiKeys.gemini || undefined,
-        resend_key: apiKeys.resend || undefined
+        resend_key: apiKeys.resend || undefined,
+        phantombuster_key: apiKeys.phantombuster || undefined
       };
       
       await api.post('/settings/api-keys', payload);
       toast.success('API keys saved!');
-      setApiKeys({ perplexity: '', openai: '', gemini: '', resend: '' });
+      setApiKeys({ perplexity: '', openai: '', gemini: '', resend: '', phantombuster: '' });
       fetchIntegrations();
       fetchApiKeys();
     } catch (error) {
