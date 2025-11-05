@@ -63,48 +63,48 @@ export const PhantombusterImport = ({ onClose, onImportComplete }) => {
 
   if (loading) {
     return (
-      <div className=\"modal-overlay\">
-        <div className=\"modal-content\">
+      <div className="modal-overlay">
+        <div className="modal-content">
           <h3>Loading Phantombuster Agents...</h3>
-          <div className=\"loading-spinner\"></div>
+          <div className="loading-spinner"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className=\"modal-overlay\" onClick={onClose}>
-      <div className=\"modal-content\" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h3>Import Leads from Phantombuster</h3>
-          <button onClick={onClose} className=\"btn-secondary\">✕ Close</button>
+          <button onClick={onClose} className="btn-secondary">✕ Close</button>
         </div>
 
         {agents.length === 0 ? (
-          <div className=\"empty-state\">
+          <div className="empty-state">
             <p>No Phantombuster agents found. Create agents in your Phantombuster dashboard first.</p>
             <a 
-              href=\"https://phantombuster.com/dashboard\" 
-              target=\"_blank\" 
-              rel=\"noopener noreferrer\"
-              className=\"btn-primary\"
+              href="https://phantombuster.com/dashboard" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="btn-primary"
               style={{ marginTop: '1rem', display: 'inline-block' }}
             >
               Open Phantombuster Dashboard
             </a>
           </div>
         ) : (
-          <div className=\"agents-list\">
+          <div className="agents-list">
             {agents.map((agent) => (
-              <div key={agent.id} className=\"agent-card\">
-                <div className=\"agent-info\">
+              <div key={agent.id} className="agent-card">
+                <div className="agent-info">
                   <h4>{agent.name}</h4>
                   <p>{agent.scriptId}</p>
                   <small>Last run: {agent.lastEndMessage || 'Never'}</small>
                 </div>
                 <button
                   onClick={() => handleImport(agent.id)}
-                  className=\"btn-primary\"
+                  className="btn-primary"
                   disabled={importing}
                 >
                   {importing && selectedAgent === agent.id ? 'Importing...' : 'Import Leads'}
@@ -114,7 +114,7 @@ export const PhantombusterImport = ({ onClose, onImportComplete }) => {
           </div>
         )}
 
-        <div className=\"info-banner\" style={{ marginTop: '2rem' }}>
+        <div className="info-banner" style={{ marginTop: '2rem' }}>
           <p><strong>How it works:</strong> Select a Phantombuster agent that has scraped LinkedIn profiles. OmniReach will import the leads with their names, companies, titles, and LinkedIn URLs.</p>
         </div>
       </div>
