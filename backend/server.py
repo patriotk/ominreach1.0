@@ -1808,6 +1808,92 @@ async def get_phantombuster_job_status(job_id: str, current_user: User = Depends
     
     return {"job_id": job_id, "status": job.get("status", "unknown")}
 
+@api_router.post("/webhooks/phantombuster")
+async def phantombuster_webhook(request: Request):
+    """
+    Receive webhooks from Phantombuster when agents complete
+    Auto-imports leads from completed scraping agents
+    """
+    try:
+        payload = await request.json()
+        
+        # Log webhook for debugging
+        logging.info(f"Phantombuster webhook received: {payload}")
+        
+        agent_id = payload.get("agentId")
+        container_id = payload.get("containerId")
+        status = payload.get("status")
+        output_url = payload.get("output")
+        
+        if status != "finished":
+            return {"message": "Webhook received - agent not finished yet"}
+        
+        # Find if this is a tracked job
+        job = await db.phantombuster_jobs.find_one({"container_id": container_id})
+        
+        # Get Phantombuster API key
+        pb_key = os.getenv("PHANTOMBUSTER_API_KEY")
+        
+        if job and pb_key:
+            # Update job status
+            await db.phantombuster_jobs.update_one(
+                {"container_id": container_id},
+                {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc)}}
+            )
+        
+        # If output URL exists, try to auto-import leads
+        if output_url and pb_key:
+            pb_service = PhantombusterService(pb_key)
+            
+            try:
+                content = await pb_service.download_output_file(output_url)
+                
+                # Parse based on file type
+                if output_url.endswith('.csv'):
+                    leads_data = pb_service.parse_csv_output(content)
+                else:
+                    leads_data = pb_service.parse_json_output(content)
+                
+                # Import leads (assign to user from job if available)
+                user_id = job.get("user_id") if job else "admin"
+                imported_count = 0
+                
+                for data in leads_data[:50]:  # Limit to 50 per webhook
+                    # Check if lead already exists
+                    linkedin_url = data.get("profileUrl") or data.get("url")
+                    if linkedin_url:
+                        existing = await db.leads.find_one({"linkedin_url": linkedin_url})
+                        if existing:
+                            continue
+                    
+                    lead = Lead(
+                        name=data.get("fullName") or data.get("name") or "Unknown",
+                        email=data.get("email"),
+                        linkedin_url=linkedin_url,
+                        company=data.get("company") or data.get("companyName"),
+                        title=data.get("title") or data.get("headline"),
+                        user_id=user_id
+                    )
+                    await db.leads.insert_one(lead.model_dump())
+                    imported_count += 1
+                
+                logging.info(f"Auto-imported {imported_count} leads from Phantombuster webhook")
+                
+                return {
+                    "message": "Webhook processed successfully",
+                    "imported_leads": imported_count
+                }
+            
+            except Exception as e:
+                logging.error(f"Failed to auto-import from webhook: {str(e)}")
+                return {"message": "Webhook received but import failed", "error": str(e)}
+        
+        return {"message": "Webhook received successfully"}
+    
+    except Exception as e:
+        logging.error(f"Webhook processing error: {str(e)}")
+        return {"message": "Webhook received with errors", "error": str(e)}
+
 # Include the router in the main app
 app.include_router(api_router)
 
