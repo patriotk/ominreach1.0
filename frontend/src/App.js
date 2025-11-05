@@ -967,7 +967,14 @@ const ResearchPage = () => {
 // Settings Page
 const SettingsPage = () => {
   const [integrations, setIntegrations] = useState(null);
-  const [apiKeys, setApiKeys] = useState({ perplexity: '', openai: '', gemini: '', resend: '', phantombuster: '' });
+  const [apiKeys, setApiKeys] = useState({ 
+    perplexity: '', 
+    openai: '', 
+    gemini: '', 
+    resend: '', 
+    phantombuster: '',
+    linkedin_cookie: ''
+  });
   const [showApiKeys, setShowApiKeys] = useState(false);
   const [sheetsUrl, setSheetsUrl] = useState('');
   const [loading, setLoading] = useState(true);
