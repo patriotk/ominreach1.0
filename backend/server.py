@@ -1283,6 +1283,17 @@ async def get_integration_settings(current_user: User = Depends(get_current_user
     # Check which API keys are configured
     perplexity_configured = bool(os.getenv("PERPLEXITY_API_KEY"))
     emergent_llm_configured = bool(os.getenv("EMERGENT_LLM_KEY"))
+    phantombuster_configured = bool(os.getenv("PHANTOMBUSTER_API_KEY"))
+    
+    # Check user's stored keys
+    user_keys = await db.integrations.find_one({
+        "user_id": current_user.id,
+        "type": "api_keys"
+    })
+    
+    if user_keys:
+        perplexity_configured = perplexity_configured or bool(user_keys.get("perplexity_key"))
+        phantombuster_configured = phantombuster_configured or bool(user_keys.get("phantombuster_key"))
     
     # Check Google Sheets
     sheets_integration = await db.integrations.find_one({
@@ -1290,11 +1301,8 @@ async def get_integration_settings(current_user: User = Depends(get_current_user
         "type": "google_sheets"
     })
     
-    # Check LinkedIn (mock for now)
-    linkedin_integration = await db.integrations.find_one({
-        "user_id": current_user.id,
-        "type": "linkedin"
-    })
+    # Check LinkedIn (Phantombuster)
+    linkedin_status = "ready" if phantombuster_configured else "not_configured"
     
     return {
         "ai_models": {
@@ -1308,8 +1316,9 @@ async def get_integration_settings(current_user: User = Depends(get_current_user
                 "status": sheets_integration.get("status") if sheets_integration else "not_connected"
             },
             "linkedin": {
-                "connected": bool(linkedin_integration),
-                "status": "mock_mode"
+                "connected": phantombuster_configured,
+                "status": linkedin_status,
+                "service": "phantombuster"
             },
             "email": {
                 "connected": False,
