@@ -1821,78 +1821,126 @@ async def phantombuster_webhook(request: Request):
         logging.info(f"Phantombuster webhook received: {payload}")
         
         agent_id = payload.get("agentId")
+        agent_name = payload.get("agentName", "Unknown Agent")
         container_id = payload.get("containerId")
-        status = payload.get("status")
-        output_url = payload.get("output")
+        exit_message = payload.get("exitMessage")
+        result_object = payload.get("resultObject")
         
-        if status != "finished":
-            return {"message": "Webhook received - agent not finished yet"}
+        # Store webhook event
+        await db.phantombuster_webhooks.insert_one({
+            "agent_id": agent_id,
+            "agent_name": agent_name,
+            "container_id": container_id,
+            "payload": payload,
+            "received_at": datetime.now(timezone.utc)
+        })
         
-        # Find if this is a tracked job
-        job = await db.phantombuster_jobs.find_one({"container_id": container_id})
+        if exit_message != "finished":
+            return {"message": f"Webhook received - agent status: {exit_message}"}
         
-        # Get Phantombuster API key
+        # Try to get output from Phantombuster API
         pb_key = os.getenv("PHANTOMBUSTER_API_KEY")
         
-        if job and pb_key:
-            # Update job status
-            await db.phantombuster_jobs.update_one(
-                {"container_id": container_id},
-                {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc)}}
-            )
+        if not pb_key:
+            return {"message": "No Phantombuster API key configured"}
         
-        # If output URL exists, try to auto-import leads
-        if output_url and pb_key:
-            pb_service = PhantombusterService(pb_key)
-            
-            try:
-                content = await pb_service.download_output_file(output_url)
-                
-                # Parse based on file type
-                if output_url.endswith('.csv'):
-                    leads_data = pb_service.parse_csv_output(content)
-                else:
-                    leads_data = pb_service.parse_json_output(content)
-                
-                # Import leads (assign to user from job if available)
-                user_id = job.get("user_id") if job else "admin"
-                imported_count = 0
-                
-                for data in leads_data[:50]:  # Limit to 50 per webhook
-                    # Check if lead already exists
-                    linkedin_url = data.get("profileUrl") or data.get("url")
-                    if linkedin_url:
-                        existing = await db.leads.find_one({"linkedin_url": linkedin_url})
-                        if existing:
-                            continue
-                    
-                    lead = Lead(
-                        name=data.get("fullName") or data.get("name") or "Unknown",
-                        email=data.get("email"),
-                        linkedin_url=linkedin_url,
-                        company=data.get("company") or data.get("companyName"),
-                        title=data.get("title") or data.get("headline"),
-                        user_id=user_id
-                    )
-                    await db.leads.insert_one(lead.model_dump())
-                    imported_count += 1
-                
-                logging.info(f"Auto-imported {imported_count} leads from Phantombuster webhook")
-                
-                return {
-                    "message": "Webhook processed successfully",
-                    "imported_leads": imported_count
-                }
-            
-            except Exception as e:
-                logging.error(f"Failed to auto-import from webhook: {str(e)}")
-                return {"message": "Webhook received but import failed", "error": str(e)}
+        pb_service = PhantombusterService(pb_key)
         
-        return {"message": "Webhook received successfully"}
+        try:
+            # Get agent output via API (more reliable than webhook data)
+            output_data = await pb_service.get_agent_output(agent_id)
+            
+            if not output_data:
+                return {"message": "No output data available from API"}
+            
+            # Check for output URL
+            result_obj = output_data.get("resultObject") or {}
+            output_url = None
+            
+            # Try different output URL patterns
+            if isinstance(result_obj, dict):
+                output_url = result_obj.get("csvUrl") or result_obj.get("outputUrl") or result_obj.get("output")
+            
+            # Also check containerOutput
+            if not output_url and output_data.get("containerOutput"):
+                output_url = output_data["containerOutput"]
+            
+            if not output_url:
+                # Check if result has data directly
+                if isinstance(result_object, str):
+                    import json
+                    try:
+                        result_data = json.loads(result_object)
+                        if isinstance(result_data, list) and len(result_data) > 0:
+                            # Has inline data
+                            leads_data = result_data
+                            imported_count = await import_leads_from_data(leads_data, "webhook-auto")
+                            return {
+                                "message": f"Imported {imported_count} leads from inline data",
+                                "agent": agent_name
+                            }
+                    except:
+                        pass
+                
+                return {"message": "No output URL found in agent data", "agent": agent_name}
+            
+            # Download and parse output
+            content = await pb_service.download_output_file(output_url)
+            
+            # Parse based on file type
+            if '.csv' in output_url:
+                leads_data = pb_service.parse_csv_output(content)
+            else:
+                leads_data = pb_service.parse_json_output(content)
+            
+            # Import leads
+            imported_count = await import_leads_from_data(leads_data, "webhook-auto")
+            
+            return {
+                "message": f"Successfully imported {imported_count} leads",
+                "agent": agent_name,
+                "source": "webhook"
+            }
+        
+        except Exception as e:
+            logging.error(f"Webhook processing error: {str(e)}")
+            return {"message": f"Webhook received but processing failed: {str(e)}"}
     
     except Exception as e:
-        logging.error(f"Webhook processing error: {str(e)}")
-        return {"message": "Webhook received with errors", "error": str(e)}
+        logging.error(f"Webhook error: {str(e)}")
+        return {"message": "Webhook processing error", "error": str(e)}
+
+async def import_leads_from_data(leads_data: List[Dict], user_id: str) -> int:
+    """Helper function to import leads from parsed data"""
+    imported_count = 0
+    
+    for data in leads_data[:100]:  # Limit to 100 per import
+        # Skip if no useful data
+        linkedin_url = data.get("profileUrl") or data.get("url") or data.get("linkedinUrl")
+        name = data.get("fullName") or data.get("name") or data.get("firstName", "") + " " + data.get("lastName", "")
+        
+        if not name or name.strip() == "":
+            continue
+        
+        # Check if lead already exists
+        if linkedin_url:
+            existing = await db.leads.find_one({"linkedin_url": linkedin_url})
+            if existing:
+                continue
+        
+        lead = Lead(
+            name=name.strip(),
+            email=data.get("email") or data.get("emailAddress"),
+            linkedin_url=linkedin_url,
+            company=data.get("company") or data.get("companyName") or data.get("currentCompany"),
+            title=data.get("title") or data.get("headline") or data.get("occupation"),
+            user_id=user_id
+        )
+        
+        await db.leads.insert_one(lead.model_dump())
+        imported_count += 1
+    
+    return imported_count
 
 # Include the router in the main app
 app.include_router(api_router)
