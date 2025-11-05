@@ -1351,6 +1351,8 @@ async def update_api_keys(keys: APIKeysUpdate, current_user: User = Depends(get_
         updates["resend_key"] = keys.resend_key
     if keys.phantombuster_key:
         updates["phantombuster_key"] = keys.phantombuster_key
+    if keys.linkedin_session_cookie:
+        updates["linkedin_session_cookie"] = keys.linkedin_session_cookie
     
     if updates:
         await db.integrations.update_one(
