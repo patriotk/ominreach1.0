@@ -1347,6 +1347,8 @@ async def update_api_keys(keys: APIKeysUpdate, current_user: User = Depends(get_
         updates["gemini_key"] = keys.gemini_key
     if keys.resend_key:
         updates["resend_key"] = keys.resend_key
+    if keys.phantombuster_key:
+        updates["phantombuster_key"] = keys.phantombuster_key
     
     if updates:
         await db.integrations.update_one(
