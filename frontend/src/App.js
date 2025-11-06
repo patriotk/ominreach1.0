@@ -587,6 +587,27 @@ const LeadsPage = () => {
     }
   };
 
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Please upload a CSV file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      setImportText(content);
+      toast.success('File loaded! Review and click Import.');
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read file');
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="page-container" data-testid="leads-page">
       <div className="page-header">
