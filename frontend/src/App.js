@@ -638,20 +638,47 @@ const LeadsPage = () => {
       {showImport && (
         <div className="create-form">
           <h3>Import Contacts (CSV)</h3>
-          <p style={{ color: '#a0a0b0', marginBottom: '1rem' }}>
-            Paste CSV data with headers: name,email,linkedin_url,company,title
-          </p>
-          <textarea
-            placeholder="name,email,linkedin_url,company,title&#10;John Doe,john@example.com,https://linkedin.com/in/johndoe,Acme Inc,CTO"
-            value={importText}
-            onChange={(e) => setImportText(e.target.value)}
-            className="input"
-            rows="8"
-            data-testid="import-textarea"
-          />
+          
+          <div className="import-options">
+            <div className="upload-section">
+              <label className="file-upload-label">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+                <div className="file-upload-btn">
+                  📁 Upload CSV File
+                </div>
+              </label>
+              <p style={{ color: '#a0a0b0', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                Upload your LinkedIn connections.csv or any CSV with headers
+              </p>
+            </div>
+
+            <div className="divider-text">OR</div>
+
+            <div className="paste-section">
+              <p style={{ color: '#a0a0b0', marginBottom: '1rem' }}>
+                Paste CSV data with headers: name,email,linkedin_url,company,title
+              </p>
+              <textarea
+                placeholder="name,email,linkedin_url,company,title&#10;John Doe,john@example.com,https://linkedin.com/in/johndoe,Acme Inc,CTO"
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                className="input"
+                rows="8"
+                data-testid="import-textarea"
+              />
+            </div>
+          </div>
+
           <div className="form-actions">
-            <button onClick={handleImport} className="btn-primary" data-testid="submit-import-btn">Import</button>
-            <button onClick={() => setShowImport(false)} className="btn-secondary">Cancel</button>
+            <button onClick={handleImport} className="btn-primary" data-testid="submit-import-btn" disabled={!importText}>
+              Import {importText ? `(${importText.split('\n').length - 1} rows)` : ''}
+            </button>
+            <button onClick={() => { setShowImport(false); setImportText(''); }} className="btn-secondary">Cancel</button>
           </div>
         </div>
       )}
