@@ -2154,6 +2154,67 @@ textarea.input {
   font-size: 0.85rem;
 }
 
+/* CSV Upload */
+.import-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.upload-section {
+  text-align: center;
+}
+
+.file-upload-label {
+  cursor: pointer;
+  display: inline-block;
+}
+
+.file-upload-btn {
+  padding: 1.5rem 3rem;
+  background: linear-gradient(135deg, #93c5fd, #c4b5fd);
+  border-radius: 14px;
+  color: #0a0a0b;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s;
+  display: inline-block;
+}
+
+.file-upload-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(147, 197, 253, 0.4);
+}
+
+.divider-text {
+  text-align: center;
+  color: #6b6b7b;
+  font-weight: 600;
+  position: relative;
+  margin: 1rem 0;
+}
+
+.divider-text::before,
+.divider-text::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 45%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.divider-text::before {
+  left: 0;
+}
+
+.divider-text::after {
+  right: 0;
+}
+
+.paste-section {
+}
+
 @media (max-width: 768px) {
   .dashboard-layout {
     flex-direction: column;
