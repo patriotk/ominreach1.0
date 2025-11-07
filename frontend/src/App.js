@@ -622,6 +622,7 @@ const LeadsPage = () => {
       const headers = headerRow.map(h => h.toLowerCase().trim());
       
       console.log('CSV Headers found:', headers);
+      console.log('Detecting format: ' + (headers.includes('linkedinprofileurl') || headers.includes('fullname') ? 'Phantombuster' : 'Standard'));
       
       // Parse each data row
       const leads = [];
@@ -636,23 +637,32 @@ const LeadsPage = () => {
           row[header] = values[index] ? values[index].trim() : '';
         });
         
-        // Build lead object with flexible column matching
-        const firstName = row['first name'] || row['firstname'] || '';
-        const lastName = row['last name'] || row['lastname'] || '';
-        const fullName = row['name'] || row['full name'] || row['contact name'] || 
-                        (firstName && lastName ? `${firstName} ${lastName}`.trim() : '') ||
-                        firstName || lastName;
+        // PHANTOMBUSTER FORMAT: fullName, linkedinProfileUrl, linkedinHeadline
+        const fullName = row['fullname'] || row['full_name'] || row['name'] || row['contact name'];
+        const firstName = row['firstname'] || row['first name'];
+        const lastName = row['lastname'] || row['last name'];
+        const linkedinUrl = row['linkedinprofileurl'] || row['linkedin_profile_url'] || row['profileurl'] || 
+                           row['linkedin_url'] || row['url'] || row['profile url'] || row['linkedin'];
+        const headline = row['linkedinheadline'] || row['linkedin_headline'] || row['headline'];
         
+        // Standard columns
+        const email = row['email'] || row['email address'] || row['email addresses'] || row['e-mail'];
+        const company = row['company'] || row['organization'] || row['current company'];
+        const title = row['title'] || row['position'] || row['job title'] || row['occupation'];
+        
+        // Build name
+        const name = fullName || (firstName && lastName ? `${firstName} ${lastName}` : '') || firstName || lastName;
+        
+        // Build final lead object
         const lead = {
-          name: fullName,
-          email: row['email'] || row['email address'] || row['email addresses'] || 
-                row['e-mail'] || row['e-mail address'] || '',
-          linkedin_url: row['linkedin_url'] || row['url'] || row['profile url'] || 
-                       row['linkedin profile'] || row['linkedin'] || '',
-          company: row['company'] || row['organization'] || row['current company'] || 
-                  row['employer'] || row['company name'] || '',
-          title: row['title'] || row['position'] || row['job title'] || 
-                row['headline'] || row['current position'] || row['occupation'] || ''
+          fullName: fullName,  // Phantombuster field
+          linkedinProfileUrl: linkedinUrl,  // Phantombuster field
+          linkedinHeadline: headline,  // Phantombuster field
+          name: name,
+          email: email,
+          linkedin_url: linkedinUrl,
+          company: company,
+          title: title || headline  // Use headline as title if no title column
         };
         
         console.log(`Row ${i}:`, lead);
