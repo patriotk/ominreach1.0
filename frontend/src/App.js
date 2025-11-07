@@ -577,6 +577,20 @@ const LeadsPage = () => {
     }
   };
 
+  const retryFailedPersonas = async () => {
+    try {
+      const response = await api.post('/leads/retry-failed-personas');
+      if (response.data.retried > 0) {
+        toast.success(`Retrying ${response.data.retried} failed personas!`);
+        setTimeout(fetchLeads, 2000);
+      } else {
+        toast.info('No failed leads with data to retry');
+      }
+    } catch (error) {
+      toast.error('Retry failed');
+    }
+  };
+
   const handleImport = async () => {
     try {
       const lines = importText.trim().split('\n');
