@@ -427,37 +427,59 @@ async def delete_lead(lead_id: str, current_user: User = Depends(get_current_use
 @api_router.post("/leads/import")
 async def bulk_import_leads(import_data: BulkImportLeadsRequest, current_user: User = Depends(get_current_user)):
     """
-    Bulk import leads from CSV or other sources
-    Auto-triggers persona research for each lead
+    Bulk import leads from CSV - Auto-detects Phantombuster format
+    Auto-generates personas using LinkedIn URLs
     """
     imported_count = 0
-    leads_to_insert = []
     lead_ids_for_research = []
     
     for lead_data in import_data.leads:
-        # Parse and normalize lead data
-        name = lead_data.get("name") or lead_data.get("Name") or lead_data.get("First Name", "") + " " + lead_data.get("Last Name", "")
-        name = name.strip()
+        # PHANTOMBUSTER FORMAT DETECTION
+        # Phantombuster columns: linkedinProfileUrl, fullName, firstName, lastName, linkedinHeadline
         
-        if not name:
+        # Get name (Phantombuster uses fullName)
+        name = (lead_data.get("fullName") or lead_data.get("full_name") or
+                lead_data.get("name") or lead_data.get("Name") or 
+                (lead_data.get("firstName", "") + " " + lead_data.get("lastName", "")).strip())
+        
+        if not name or len(name) < 2:
             continue
         
-        # Handle different CSV formats
-        email = (lead_data.get("email") or lead_data.get("Email") or 
-                lead_data.get("Email Address") or lead_data.get("email_address"))
+        # Get LinkedIn URL (Phantombuster uses linkedinProfileUrl)
+        linkedin_url = (lead_data.get("linkedinProfileUrl") or lead_data.get("linkedin_profile_url") or
+                       lead_data.get("profileUrl") or lead_data.get("linkedin_url") or
+                       lead_data.get("LinkedIn URL") or lead_data.get("URL"))
         
-        linkedin_url = (lead_data.get("linkedin_url") or lead_data.get("LinkedIn URL") or 
-                       lead_data.get("URL") or lead_data.get("Profile URL") or
-                       lead_data.get("url"))
+        # Normalize LinkedIn URL
+        if linkedin_url and not linkedin_url.startswith('http'):
+            linkedin_url = 'https://linkedin.com/in/' + linkedin_url
         
-        company = (lead_data.get("company") or lead_data.get("Company") or 
-                  lead_data.get("Organization") or lead_data.get("Current Company"))
+        # Get title (Phantombuster uses linkedinHeadline)
+        title = (lead_data.get("linkedinHeadline") or lead_data.get("linkedin_headline") or
+                lead_data.get("headline") or lead_data.get("title") or
+                lead_data.get("Title") or lead_data.get("Position"))
         
-        title = (lead_data.get("title") or lead_data.get("Title") or 
-                lead_data.get("Position") or lead_data.get("Job Title") or
-                lead_data.get("headline"))
+        # Try to extract company from headline (e.g., "CEO at Acme Corp")
+        company = lead_data.get("company") or lead_data.get("Company")
         
-        # Create lead with variables
+        if not company and title:
+            # Try to extract company from headline
+            import re
+            at_match = re.search(r'\bat\s+([^|,]+)', title, re.IGNORECASE)
+            if at_match:
+                company = at_match.group(1).strip()
+        
+        # Get email
+        email = (lead_data.get("email") or lead_data.get("Email") or
+                lead_data.get("Email Address") or lead_data.get("emailAddress"))
+        
+        # Check for duplicates
+        if linkedin_url:
+            existing = await db.leads.find_one({"linkedin_url": linkedin_url, "user_id": current_user.id})
+            if existing:
+                continue
+        
+        # Create lead
         lead = Lead(
             name=name,
             email=email,
@@ -465,6 +487,7 @@ async def bulk_import_leads(import_data: BulkImportLeadsRequest, current_user: U
             company=company,
             title=title,
             campaign_id=import_data.campaign_id,
+            persona_status="pending",
             user_id=current_user.id
         )
         
@@ -473,14 +496,17 @@ async def bulk_import_leads(import_data: BulkImportLeadsRequest, current_user: U
         lead_id = lead.id
         
         # Store variable mappings
+        name_parts = name.split()
         variables = {
+            "leadName": name,
             "name": name,
-            "first_name": name.split()[0] if name else "",
-            "last_name": " ".join(name.split()[1:]) if len(name.split()) > 1 else "",
+            "first_name": name_parts[0] if name_parts else "",
+            "last_name": " ".join(name_parts[1:]) if len(name_parts) > 1 else "",
             "email": email or "",
             "company": company or "",
             "job_title": title or "",
-            "linkedin_url": linkedin_url or ""
+            "linkedin_url": linkedin_url or "",
+            "leadPersona": ""  # Will be filled after research
         }
         
         await db.lead_variables.insert_one({
@@ -492,21 +518,19 @@ async def bulk_import_leads(import_data: BulkImportLeadsRequest, current_user: U
         lead_ids_for_research.append(lead_id)
         imported_count += 1
     
-    # Auto-trigger persona research for all imported leads (background)
+    # Auto-trigger persona research for all imported leads
     if lead_ids_for_research:
-        # Launch background persona research
-        import asyncio
-        asyncio.create_task(auto_research_personas(lead_ids_for_research, current_user.id))
+        asyncio.create_task(auto_research_personas_v2(lead_ids_for_research, current_user.id))
     
     return {
-        "message": f"Successfully imported {imported_count} leads. Persona research started in background.",
+        "message": f"Successfully imported {imported_count} leads. Persona research started.",
         "count": imported_count,
         "research_queued": len(lead_ids_for_research)
     }
 
-async def auto_research_personas(lead_ids: List[str], user_id: str):
+async def auto_research_personas_v2(lead_ids: List[str], user_id: str):
     """
-    Background task to auto-research personas for imported leads
+    Auto-research personas using LinkedIn URLs when available
     """
     try:
         # Get user's Perplexity key
@@ -518,6 +542,12 @@ async def auto_research_personas(lead_ids: List[str], user_id: str):
         
         if not perplexity_key:
             logging.info("No Perplexity key - skipping auto-research")
+            # Mark all as failed
+            for lead_id in lead_ids:
+                await db.leads.update_one(
+                    {"id": lead_id},
+                    {"$set": {"persona_status": "failed", "persona": "Perplexity API key required"}}
+                )
             return
         
         # Research each lead
@@ -528,7 +558,7 @@ async def auto_research_personas(lead_ids: List[str], user_id: str):
                     continue
                 
                 # Skip if already has persona
-                if lead.get("persona"):
+                if lead.get("persona") and lead.get("persona_status") == "completed":
                     continue
                 
                 # Update status to researching
@@ -537,22 +567,30 @@ async def auto_research_personas(lead_ids: List[str], user_id: str):
                     {"$set": {"persona_status": "researching"}}
                 )
                 
-                # Generate persona
                 person_name = lead.get("name", "")
                 company = lead.get("company", "")
                 title = lead.get("title", "")
+                linkedin_url = lead.get("linkedin_url", "")
                 
-                if not person_name or not company:
+                # Validation - need at least name and (company OR linkedin_url)
+                if not person_name or (not company and not linkedin_url):
                     await db.leads.update_one(
                         {"id": lead_id},
-                        {"$set": {"persona_status": "failed", "persona": "Insufficient data for research"}}
+                        {"$set": {
+                            "persona_status": "failed",
+                            "persona": "Insufficient data: need company and title for research"
+                        }}
                     )
                     continue
                 
+                # Build research query - prefer LinkedIn URL if available
+                if linkedin_url:
+                    research_query = f"""Using the LinkedIn profile at {linkedin_url} for {person_name}, write ONE concise paragraph (3-4 sentences) describing their professional persona — their role, expertise, communication style, key focus areas, and career motivations. Keep it actionable for B2B outreach."""
+                else:
+                    research_query = f"""Search for {person_name}, {title} at {company}. Write ONE paragraph (3-4 sentences) describing their professional persona including: role, communication style, priorities, main challenge, and best outreach approach."""
+                
                 # Use Perplexity for research
                 async with httpx.AsyncClient() as client:
-                    research_query = f"""Search for {person_name}, {title} at {company}. Create a CONCISE professional persona in ONE PARAGRAPH (4-5 sentences max) including: role, communication style, top priorities, main challenge, and best outreach approach."""
-                    
                     response = await client.post(
                         "https://api.perplexity.ai/chat/completions",
                         headers={
@@ -562,10 +600,11 @@ async def auto_research_personas(lead_ids: List[str], user_id: str):
                         json={
                             "model": "sonar-pro",
                             "messages": [
-                                {"role": "system", "content": "You are an expert B2B sales researcher. Create concise, single-paragraph professional personas."},
+                                {"role": "system", "content": "You are an expert B2B sales researcher. Create concise, single-paragraph professional personas. Never use bullet points or multiple paragraphs."},
                                 {"role": "user", "content": research_query}
                             ],
-                            "temperature": 0.7
+                            "temperature": 0.7,
+                            "search_recency_filter": "month"
                         },
                         timeout=60.0
                     )
@@ -574,40 +613,52 @@ async def auto_research_personas(lead_ids: List[str], user_id: str):
                         result = response.json()
                         persona = result.get("choices", [{}])[0].get("message", {}).get("content", "")
                         
+                        # Clean persona (remove any bullet points or formatting)
+                        persona = persona.replace('•', '').replace('*', '').strip()
+                        
                         # Update lead with persona
                         await db.leads.update_one(
                             {"id": lead_id},
                             {"$set": {
                                 "persona": persona,
                                 "persona_status": "completed",
-                                "score": 7.5,
-                                "date_contacted": datetime.now(timezone.utc)
+                                "score": 8.0
                             }}
                         )
                         
                         # Update variables with persona
                         await db.lead_variables.update_one(
                             {"lead_id": lead_id},
-                            {"$set": {"variables.persona": persona}}
+                            {"$set": {
+                                "variables.leadPersona": persona,
+                                "variables.persona": persona
+                            }}
                         )
                         
-                        logging.info(f"Auto-generated persona for lead: {person_name}")
+                        logging.info(f"✅ Auto-generated persona for: {person_name}")
                     else:
                         await db.leads.update_one(
                             {"id": lead_id},
-                            {"$set": {"persona_status": "failed", "persona": "Research failed"}}
+                            {"$set": {
+                                "persona_status": "failed",
+                                "persona": f"Research API error: {response.status_code}"
+                            }}
                         )
                 
-                # Small delay to avoid rate limits
+                # Delay to avoid rate limits
                 await asyncio.sleep(3)
                 
+            except httpx.TimeoutException:
+                await db.leads.update_one(
+                    {"id": lead_id},
+                    {"$set": {"persona_status": "failed", "persona": "Research timeout"}}
+                )
             except Exception as e:
                 logging.error(f"Auto-research failed for lead {lead_id}: {str(e)}")
                 await db.leads.update_one(
                     {"id": lead_id},
-                    {"$set": {"persona_status": "failed", "persona": f"Error: {str(e)}"}}
+                    {"$set": {"persona_status": "failed", "persona": f"Error: {str(e)[:100]}"}}
                 )
-                continue
     
     except Exception as e:
         logging.error(f"Auto-research background task error: {str(e)}")
