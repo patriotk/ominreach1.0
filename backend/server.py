@@ -376,6 +376,9 @@ async def logout(response: Response, current_user: User = Depends(get_current_us
 
 @api_router.post("/leads", response_model=Lead)
 async def create_lead(lead_data: CreateLeadRequest, current_user: User = Depends(get_current_user)):
+    """
+    Create a new lead manually - Auto-triggers persona research
+    """
     lead = Lead(
         name=lead_data.name,
         email=lead_data.email,
@@ -383,9 +386,35 @@ async def create_lead(lead_data: CreateLeadRequest, current_user: User = Depends
         company=lead_data.company,
         title=lead_data.title,
         campaign_id=lead_data.campaign_id,
+        persona_status="pending",
         user_id=current_user.id
     )
+    
     await db.leads.insert_one(lead.model_dump())
+    
+    # Store variables
+    name_parts = lead.name.split()
+    variables = {
+        "leadName": lead.name,
+        "name": lead.name,
+        "first_name": name_parts[0] if name_parts else "",
+        "last_name": " ".join(name_parts[1:]) if len(name_parts) > 1 else "",
+        "email": lead.email or "",
+        "company": lead.company or "",
+        "job_title": lead.title or "",
+        "linkedin_url": lead.linkedin_url or "",
+        "leadPersona": ""
+    }
+    
+    await db.lead_variables.insert_one({
+        "lead_id": lead.id,
+        "variables": variables,
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # Auto-trigger persona research
+    asyncio.create_task(auto_research_personas_v2([lead.id], current_user.id))
+    
     return lead
 
 @api_router.get("/leads", response_model=List[Lead])
