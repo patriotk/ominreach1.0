@@ -570,20 +570,57 @@ const LeadsPage = () => {
 
   const handleImport = async () => {
     try {
-      // Parse CSV format: name,email,linkedin_url,company,title
+      // Parse CSV - handle both comma and tab separated
       const lines = importText.trim().split('\n');
-      const leads = lines.slice(1).map(line => {
-        const [name, email, linkedin_url, company, title] = line.split(',').map(s => s.trim());
-        return { name, email, linkedin_url, company, title };
-      }).filter(lead => lead.name);
+      
+      if (lines.length < 2) {
+        toast.error('CSV must have headers and at least one row');
+        return;
+      }
+      
+      // Get headers
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+      
+      // Parse rows
+      const leads = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/['"]/g, ''));
+        const leadObj = {};
+        
+        headers.forEach((header, index) => {
+          leadObj[header] = values[index] || '';
+        });
+        
+        // Map to OmniReach format
+        const lead = {
+          name: leadObj['name'] || leadObj['first name'] + ' ' + leadObj['last name'] || '',
+          email: leadObj['email'] || leadObj['email address'] || leadObj['email addresses'] || '',
+          linkedin_url: leadObj['linkedin_url'] || leadObj['url'] || leadObj['profile url'] || '',
+          company: leadObj['company'] || leadObj['organization'] || leadObj['current company'] || '',
+          title: leadObj['title'] || leadObj['position'] || leadObj['job title'] || leadObj['headline'] || ''
+        };
+        
+        // Only add if has name
+        if (lead.name && lead.name.trim()) {
+          leads.push(lead);
+        }
+      }
+
+      if (leads.length === 0) {
+        toast.error('No valid leads found in CSV');
+        return;
+      }
 
       const response = await api.post('/leads/import', { leads });
-      toast.success(`Imported ${response.data.count} leads!`);
+      toast.success(`Imported ${response.data.count} leads! Persona research started automatically.`);
       setShowImport(false);
       setImportText('');
-      fetchLeads();
+      
+      // Refresh after 3 seconds to show imported leads
+      setTimeout(fetchLeads, 3000);
     } catch (error) {
       toast.error('Failed to import leads');
+      console.error(error);
     }
   };
 
