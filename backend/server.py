@@ -794,6 +794,12 @@ async def generate_ai_message(request: GenerateMessageRequest, current_user: Use
     lead_title = lead.get("title", "")
     lead_company = lead.get("company", "")
     
+    # Get stored variables
+    lead_vars = await db.lead_variables.find_one({"lead_id": request.lead_id})
+    if lead_vars:
+        variables = lead_vars.get("variables", {})
+        persona = variables.get("persona", persona)
+    
     # Get step-specific config
     step_config_map = {
         1: {
