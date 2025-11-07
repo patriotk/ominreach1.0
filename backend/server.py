@@ -426,27 +426,169 @@ async def delete_lead(lead_id: str, current_user: User = Depends(get_current_use
 async def bulk_import_leads(import_data: BulkImportLeadsRequest, current_user: User = Depends(get_current_user)):
     """
     Bulk import leads from CSV or other sources
+    Auto-triggers persona research for each lead
     """
     imported_count = 0
     leads_to_insert = []
+    lead_ids_for_research = []
     
     for lead_data in import_data.leads:
+        # Parse and normalize lead data
+        name = lead_data.get("name") or lead_data.get("Name") or lead_data.get("First Name", "") + " " + lead_data.get("Last Name", "")
+        name = name.strip()
+        
+        if not name:
+            continue
+        
+        # Handle different CSV formats
+        email = (lead_data.get("email") or lead_data.get("Email") or 
+                lead_data.get("Email Address") or lead_data.get("email_address"))
+        
+        linkedin_url = (lead_data.get("linkedin_url") or lead_data.get("LinkedIn URL") or 
+                       lead_data.get("URL") or lead_data.get("Profile URL") or
+                       lead_data.get("url"))
+        
+        company = (lead_data.get("company") or lead_data.get("Company") or 
+                  lead_data.get("Organization") or lead_data.get("Current Company"))
+        
+        title = (lead_data.get("title") or lead_data.get("Title") or 
+                lead_data.get("Position") or lead_data.get("Job Title") or
+                lead_data.get("headline"))
+        
+        # Create lead with variables
         lead = Lead(
-            name=lead_data.get("name", ""),
-            email=lead_data.get("email"),
-            linkedin_url=lead_data.get("linkedin_url"),
-            company=lead_data.get("company"),
-            title=lead_data.get("title"),
+            name=name,
+            email=email,
+            linkedin_url=linkedin_url,
+            company=company,
+            title=title,
             campaign_id=import_data.campaign_id,
             user_id=current_user.id
         )
-        leads_to_insert.append(lead.model_dump())
+        
+        # Insert and get ID
+        result = await db.leads.insert_one(lead.model_dump())
+        lead_id = lead.id
+        
+        # Store variable mappings
+        variables = {
+            "name": name,
+            "first_name": name.split()[0] if name else "",
+            "last_name": " ".join(name.split()[1:]) if len(name.split()) > 1 else "",
+            "email": email or "",
+            "company": company or "",
+            "job_title": title or "",
+            "linkedin_url": linkedin_url or ""
+        }
+        
+        await db.lead_variables.insert_one({
+            "lead_id": lead_id,
+            "variables": variables,
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        lead_ids_for_research.append(lead_id)
         imported_count += 1
     
-    if leads_to_insert:
-        await db.leads.insert_many(leads_to_insert)
+    # Auto-trigger persona research for all imported leads (background)
+    if lead_ids_for_research:
+        # Launch background persona research
+        import asyncio
+        asyncio.create_task(auto_research_personas(lead_ids_for_research, current_user.id))
     
-    return {"message": f"Successfully imported {imported_count} leads", "count": imported_count}
+    return {
+        "message": f"Successfully imported {imported_count} leads. Persona research started in background.",
+        "count": imported_count,
+        "research_queued": len(lead_ids_for_research)
+    }
+
+async def auto_research_personas(lead_ids: List[str], user_id: str):
+    """
+    Background task to auto-research personas for imported leads
+    """
+    try:
+        # Get user's Perplexity key
+        user_keys = await db.integrations.find_one({"user_id": user_id, "type": "api_keys"})
+        perplexity_key = user_keys.get("perplexity_key") if user_keys else None
+        
+        if not perplexity_key:
+            perplexity_key = os.getenv("PERPLEXITY_API_KEY")
+        
+        if not perplexity_key:
+            logging.info("No Perplexity key - skipping auto-research")
+            return
+        
+        # Research each lead
+        for lead_id in lead_ids:
+            try:
+                lead = await db.leads.find_one({"id": lead_id})
+                if not lead:
+                    continue
+                
+                # Skip if already has persona
+                if lead.get("persona"):
+                    continue
+                
+                # Generate persona
+                person_name = lead.get("name", "")
+                company = lead.get("company", "")
+                title = lead.get("title", "")
+                
+                if not person_name or not company:
+                    continue
+                
+                # Use Perplexity for research
+                async with httpx.AsyncClient() as client:
+                    research_query = f"""Search for {person_name}, {title} at {company}. Create a CONCISE professional persona in ONE PARAGRAPH (4-5 sentences max) including: role, communication style, top priorities, main challenge, and best outreach approach."""
+                    
+                    response = await client.post(
+                        "https://api.perplexity.ai/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {perplexity_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": "sonar-pro",
+                            "messages": [
+                                {"role": "system", "content": "You are an expert B2B sales researcher. Create concise, single-paragraph professional personas."},
+                                {"role": "user", "content": research_query}
+                            ],
+                            "temperature": 0.7
+                        },
+                        timeout=60.0
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        persona = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        
+                        # Update lead with persona
+                        await db.leads.update_one(
+                            {"id": lead_id},
+                            {"$set": {
+                                "persona": persona,
+                                "score": 7.5,
+                                "date_contacted": datetime.now(timezone.utc)
+                            }}
+                        )
+                        
+                        # Update variables with persona
+                        await db.lead_variables.update_one(
+                            {"lead_id": lead_id},
+                            {"$set": {"variables.persona": persona}}
+                        )
+                        
+                        logging.info(f"Auto-generated persona for lead: {person_name}")
+                
+                # Small delay to avoid rate limits
+                await asyncio.sleep(2)
+                
+            except Exception as e:
+                logging.error(f"Auto-research failed for lead {lead_id}: {str(e)}")
+                continue
+    
+    except Exception as e:
+        logging.error(f"Auto-research background task error: {str(e)}")
 
 # ============ CAMPAIGN ROUTES ============
 
