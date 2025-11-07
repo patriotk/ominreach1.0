@@ -888,16 +888,34 @@ const LeadsPage = () => {
             <h3>Edit Lead</h3>
             
             {/* Show Persona if exists */}
-            {editingLead.persona && (
+            {editingLead.persona && editingLead.persona_status === 'completed' && (
               <div className="persona-display">
                 <div className="persona-header">
                   <strong>🎯 Generated Persona</strong>
-                  {editingLead.score && <span className="persona-score">{editingLead.score}/10</span>}
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {editingLead.score && <span className="persona-score">{editingLead.score}/10</span>}
+                  </div>
                 </div>
                 <p className="persona-text">{editingLead.persona}</p>
-                {editingLead.persona_status === 'completed' && (
-                  <small style={{ color: '#22c55e' }}>✅ Persona complete and saved as {{leadPersona}} variable</small>
-                )}
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                  <button 
+                    onClick={() => regeneratePersona(editingLead.id)}
+                    className="btn-secondary"
+                    style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+                  >
+                    🔄 Regenerate Persona
+                  </button>
+                  <button 
+                    onClick={() => editPersona(editingLead)}
+                    className="btn-secondary"
+                    style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+                  >
+                    ✏️ Edit Persona
+                  </button>
+                </div>
+                <small style={{ color: '#22c55e', display: 'block', marginTop: '0.75rem' }}>
+                  ✅ Saved as {{leadPersona}} variable for message generation
+                </small>
               </div>
             )}
 
