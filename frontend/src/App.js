@@ -570,7 +570,6 @@ const LeadsPage = () => {
 
   const handleImport = async () => {
     try {
-      // Parse CSV - handle both comma and tab separated
       const lines = importText.trim().split('\n');
       
       if (lines.length < 2) {
@@ -578,49 +577,79 @@ const LeadsPage = () => {
         return;
       }
       
+      // Parse CSV properly handling quoted fields
+      const parseCSVLine = (line) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim().replace(/^["']|["']$/g, ''));
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim().replace(/^["']|["']$/g, ''));
+        return result;
+      };
+      
       // Get headers
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+      const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
       
       // Parse rows
       const leads = [];
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/['"]/g, ''));
+        if (!lines[i].trim()) continue;
+        
+        const values = parseCSVLine(lines[i]);
         const leadObj = {};
         
         headers.forEach((header, index) => {
           leadObj[header] = values[index] || '';
         });
         
-        // Map to OmniReach format
+        // Map to OmniReach format with all possible column names
+        const firstName = leadObj['first name'] || leadObj['firstname'] || '';
+        const lastName = leadObj['last name'] || leadObj['lastname'] || '';
+        const fullName = leadObj['name'] || leadObj['full name'] || (firstName + ' ' + lastName).trim();
+        
         const lead = {
-          name: leadObj['name'] || leadObj['first name'] + ' ' + leadObj['last name'] || '',
-          email: leadObj['email'] || leadObj['email address'] || leadObj['email addresses'] || '',
-          linkedin_url: leadObj['linkedin_url'] || leadObj['url'] || leadObj['profile url'] || '',
-          company: leadObj['company'] || leadObj['organization'] || leadObj['current company'] || '',
-          title: leadObj['title'] || leadObj['position'] || leadObj['job title'] || leadObj['headline'] || ''
+          name: fullName,
+          email: leadObj['email'] || leadObj['email address'] || leadObj['email addresses'] || leadObj['e-mail address'] || '',
+          linkedin_url: leadObj['linkedin_url'] || leadObj['url'] || leadObj['profile url'] || leadObj['linkedin profile'] || '',
+          company: leadObj['company'] || leadObj['organization'] || leadObj['current company'] || leadObj['employer'] || '',
+          title: leadObj['title'] || leadObj['position'] || leadObj['job title'] || leadObj['headline'] || leadObj['occupation'] || ''
         };
         
         // Only add if has name
-        if (lead.name && lead.name.trim()) {
+        if (lead.name && lead.name.trim() && lead.name !== ' ') {
           leads.push(lead);
         }
       }
 
       if (leads.length === 0) {
-        toast.error('No valid leads found in CSV');
+        toast.error('No valid leads found in CSV. Make sure it has a name column.');
         return;
       }
 
+      console.log('Parsed leads:', leads.slice(0, 3)); // Debug log
+
       const response = await api.post('/leads/import', { leads });
-      toast.success(`Imported ${response.data.count} leads! Persona research started automatically.`);
+      toast.success(`✅ Imported ${response.data.count} leads! ${response.data.research_queued} personas queued for research.`);
       setShowImport(false);
       setImportText('');
       
-      // Refresh after 3 seconds to show imported leads
-      setTimeout(fetchLeads, 3000);
+      // Refresh to show new leads
+      setTimeout(fetchLeads, 2000);
     } catch (error) {
       toast.error('Failed to import leads');
-      console.error(error);
+      console.error('Import error:', error);
     }
   };
 
