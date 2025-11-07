@@ -929,7 +929,24 @@ const LeadsPage = () => {
             {editingLead.persona_status === 'failed' && (
               <div className="persona-display failed">
                 <strong>❌ Persona Research Failed</strong>
-                <p>{editingLead.persona || 'Add company and title, then save to retry.'}</p>
+                <p>{editingLead.persona || 'Name and LinkedIn URL required'}</p>
+                {editingLead.name && editingLead.linkedin_url && (
+                  <button 
+                    onClick={() => regeneratePersona(editingLead.id)}
+                    className="btn-primary"
+                    style={{ marginTop: '1rem', fontSize: '0.9rem' }}
+                  >
+                    🔄 Retry Persona Generation
+                  </button>
+                )}
+              </div>
+            )}
+
+            {editingLead.persona_status === 'pending' && !editingLead.persona && (
+              <div className="persona-display" style={{ background: 'rgba(107, 107, 123, 0.08)', borderColor: 'rgba(107, 107, 123, 0.3)' }}>
+                <p style={{ color: '#a0a0b0', margin: 0 }}>
+                  ⏳ Persona will auto-generate when you add name + LinkedIn URL
+                </p>
               </div>
             )}
 
