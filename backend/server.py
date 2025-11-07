@@ -426,23 +426,52 @@ async def get_leads(campaign_id: Optional[str] = None, current_user: User = Depe
     leads = await db.leads.find(query).to_list(1000)
     return [Lead(**lead) for lead in leads]
 
+@api_router.post("/leads/{lead_id}/regenerate-persona")
+async def regenerate_persona(lead_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Manually trigger persona regeneration for a specific lead
+    """
+    lead = await db.leads.find_one({"id": lead_id, "user_id": current_user.id})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Validate has required data
+    if not lead.get("name") or not lead.get("linkedin_url"):
+        raise HTTPException(
+            status_code=400,
+            detail="Lead must have name and LinkedIn URL for persona generation"
+        )
+    
+    # Reset status and trigger research
+    await db.leads.update_one(
+        {"id": lead_id},
+        {"$set": {"persona_status": "pending", "persona": None}}
+    )
+    
+    # Trigger research
+    asyncio.create_task(auto_research_personas_v2([lead_id], current_user.id))
+    
+    return {
+        "message": "Persona regeneration started",
+        "lead_id": lead_id,
+        "status": "queued"
+    }
+
 @api_router.post("/leads/retry-failed-personas")
 async def retry_failed_personas(current_user: User = Depends(get_current_user)):
     """
-    Background watcher - Retry persona generation for failed leads that now have data
+    Retry persona generation for failed leads that have name + LinkedIn URL
     """
-    # Find failed leads that now have sufficient data
+    # Find failed leads with name and LinkedIn URL
     failed_leads = await db.leads.find({
         "user_id": current_user.id,
-        "persona_status": "failed",
-        "$or": [
-            {"$and": [{"company": {"$ne": None}}, {"title": {"$ne": None}}]},
-            {"linkedin_url": {"$ne": None}}
-        ]
+        "persona_status": {"$in": ["failed", "pending"]},
+        "name": {"$ne": None},
+        "linkedin_url": {"$ne": None}
     }).to_list(100)
     
     if not failed_leads:
-        return {"message": "No failed leads with sufficient data found", "retried": 0}
+        return {"message": "No failed leads with name + LinkedIn URL found", "retried": 0}
     
     # Reset to pending and trigger research
     lead_ids = []
