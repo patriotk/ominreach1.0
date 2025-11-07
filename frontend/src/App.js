@@ -1035,7 +1035,13 @@ const LeadsPage = () => {
             </thead>
             <tbody>
               {leads.map((lead) => (
-                <tr key={lead.id} data-testid={`lead-${lead.id}`}>
+                <tr 
+                  key={lead.id} 
+                  data-testid={`lead-${lead.id}`}
+                  className="lead-row"
+                  onClick={() => setViewingLead(lead)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <td><strong>{lead.name}</strong></td>
                   <td>{lead.email || '-'}</td>
                   <td>
@@ -1072,7 +1078,7 @@ const LeadsPage = () => {
                   <td>
                     {lead.call_booked ? '✅ Booked' : lead.date_contacted ? '📧 Contacted' : '⏳ New'}
                   </td>
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     <button 
                       onClick={() => setEditingLead(lead)}
                       className="btn-edit"
