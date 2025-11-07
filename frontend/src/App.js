@@ -712,6 +712,9 @@ const LeadsPage = () => {
           <p className="page-subtitle">Manage your contact list</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
+          <button onClick={() => setShowBulkEnrich(true)} className="btn-secondary">
+            🔧 Bulk Enrich
+          </button>
           <button onClick={() => setShowPhantombuster(true)} className="btn-secondary" data-testid="phantombuster-import-btn">
             🤖 Import from Phantombuster
           </button>
@@ -723,6 +726,14 @@ const LeadsPage = () => {
           </button>
         </div>
       </div>
+
+      {showBulkEnrich && (
+        <BulkLeadEnrichment
+          leads={leads.filter(l => !l.company || !l.title)}
+          onClose={() => setShowBulkEnrich(false)}
+          onComplete={fetchLeads}
+        />
+      )}
 
       {showPhantombuster && (
         <PhantombusterImport
