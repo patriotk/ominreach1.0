@@ -584,7 +584,7 @@ const LeadsPage = () => {
         return;
       }
       
-      // Parse CSV properly handling quoted fields
+      // Advanced CSV parser that handles quotes and commas inside fields
       const parseCSVLine = (line) => {
         const result = [];
         let current = '';
@@ -592,70 +592,91 @@ const LeadsPage = () => {
         
         for (let i = 0; i < line.length; i++) {
           const char = line[i];
+          const nextChar = line[i + 1];
           
           if (char === '"') {
-            inQuotes = !inQuotes;
+            if (inQuotes && nextChar === '"') {
+              // Escaped quote
+              current += '"';
+              i++; // Skip next quote
+            } else {
+              // Toggle quote state
+              inQuotes = !inQuotes;
+            }
           } else if (char === ',' && !inQuotes) {
-            result.push(current.trim().replace(/^["']|["']$/g, ''));
+            // Field separator
+            result.push(current.trim());
             current = '';
           } else {
             current += char;
           }
         }
-        result.push(current.trim().replace(/^["']|["']$/g, ''));
+        result.push(current.trim());
         return result;
       };
       
-      // Get headers
-      const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+      // Get headers (case-insensitive, normalized)
+      const headerRow = parseCSVLine(lines[0]);
+      const headers = headerRow.map(h => h.toLowerCase().trim());
       
-      // Parse rows
+      console.log('CSV Headers found:', headers);
+      
+      // Parse each data row
       const leads = [];
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
         
         const values = parseCSVLine(lines[i]);
-        const leadObj = {};
+        const row = {};
         
+        // Map values to headers
         headers.forEach((header, index) => {
-          leadObj[header] = values[index] || '';
+          row[header] = values[index] ? values[index].trim() : '';
         });
         
-        // Map to OmniReach format with all possible column names
-        const firstName = leadObj['first name'] || leadObj['firstname'] || '';
-        const lastName = leadObj['last name'] || leadObj['lastname'] || '';
-        const fullName = leadObj['name'] || leadObj['full name'] || (firstName + ' ' + lastName).trim();
+        // Build lead object with flexible column matching
+        const firstName = row['first name'] || row['firstname'] || '';
+        const lastName = row['last name'] || row['lastname'] || '';
+        const fullName = row['name'] || row['full name'] || row['contact name'] || 
+                        (firstName && lastName ? `${firstName} ${lastName}`.trim() : '') ||
+                        firstName || lastName;
         
         const lead = {
           name: fullName,
-          email: leadObj['email'] || leadObj['email address'] || leadObj['email addresses'] || leadObj['e-mail address'] || '',
-          linkedin_url: leadObj['linkedin_url'] || leadObj['url'] || leadObj['profile url'] || leadObj['linkedin profile'] || '',
-          company: leadObj['company'] || leadObj['organization'] || leadObj['current company'] || leadObj['employer'] || '',
-          title: leadObj['title'] || leadObj['position'] || leadObj['job title'] || leadObj['headline'] || leadObj['occupation'] || ''
+          email: row['email'] || row['email address'] || row['email addresses'] || 
+                row['e-mail'] || row['e-mail address'] || '',
+          linkedin_url: row['linkedin_url'] || row['url'] || row['profile url'] || 
+                       row['linkedin profile'] || row['linkedin'] || '',
+          company: row['company'] || row['organization'] || row['current company'] || 
+                  row['employer'] || row['company name'] || '',
+          title: row['title'] || row['position'] || row['job title'] || 
+                row['headline'] || row['current position'] || row['occupation'] || ''
         };
         
-        // Only add if has name
-        if (lead.name && lead.name.trim() && lead.name !== ' ') {
+        console.log(`Row ${i}:`, lead);
+        
+        // Only add if has valid name
+        if (lead.name && lead.name.trim() && lead.name.length > 1) {
           leads.push(lead);
         }
       }
 
+      console.log(`Parsed ${leads.length} valid leads from ${lines.length - 1} rows`);
+
       if (leads.length === 0) {
-        toast.error('No valid leads found in CSV. Make sure it has a name column.');
+        toast.error('No valid leads found. Check that CSV has name data in rows.');
         return;
       }
 
-      console.log('Parsed leads:', leads.slice(0, 3)); // Debug log
-
       const response = await api.post('/leads/import', { leads });
-      toast.success(`✅ Imported ${response.data.count} leads! ${response.data.research_queued} personas queued for research.`);
+      toast.success(`✅ Imported ${response.data.count} leads! Personas will generate automatically.`);
       setShowImport(false);
       setImportText('');
       
       // Refresh to show new leads
-      setTimeout(fetchLeads, 2000);
+      fetchLeads();
     } catch (error) {
-      toast.error('Failed to import leads');
+      toast.error('Failed to import leads: ' + (error.response?.data?.detail || error.message));
       console.error('Import error:', error);
     }
   };
