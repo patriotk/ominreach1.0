@@ -577,6 +577,23 @@ const LeadsPage = () => {
     }
   };
 
+  const regeneratePersona = async (leadId) => {
+    try {
+      await api.post(`/leads/${leadId}/regenerate-persona`);
+      toast.success('Persona regeneration started! Check back in 30-60 seconds.');
+      setTimeout(fetchLeads, 3000);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to regenerate persona');
+    }
+  };
+
+  const editPersona = (lead) => {
+    const newPersona = prompt('Edit persona:', lead.persona);
+    if (newPersona && newPersona !== lead.persona) {
+      handleUpdate({ ...lead, persona: newPersona, persona_status: 'completed' });
+    }
+  };
+
   const retryFailedPersonas = async () => {
     try {
       const response = await api.post('/leads/retry-failed-personas');
