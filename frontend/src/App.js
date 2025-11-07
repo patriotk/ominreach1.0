@@ -857,6 +857,7 @@ const LeadsPage = () => {
                 <th>LinkedIn</th>
                 <th>Company</th>
                 <th>Title</th>
+                <th>Persona Status</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -864,7 +865,7 @@ const LeadsPage = () => {
             <tbody>
               {leads.map((lead) => (
                 <tr key={lead.id} data-testid={`lead-${lead.id}`}>
-                  <td>{lead.name}</td>
+                  <td><strong>{lead.name}</strong></td>
                   <td>{lead.email || '-'}</td>
                   <td>
                     {lead.linkedin_url ? (
@@ -881,6 +882,22 @@ const LeadsPage = () => {
                   </td>
                   <td>{lead.company || '-'}</td>
                   <td>{lead.title || '-'}</td>
+                  <td>
+                    {lead.persona_status === 'researching' && (
+                      <span className="persona-status researching">
+                        <span className="spinner-tiny"></span> Researching...
+                      </span>
+                    )}
+                    {lead.persona_status === 'completed' && (
+                      <span className="persona-status completed">✅ Complete</span>
+                    )}
+                    {lead.persona_status === 'failed' && (
+                      <span className="persona-status failed">❌ Failed</span>
+                    )}
+                    {lead.persona_status === 'pending' && (
+                      <span className="persona-status pending">⏳ Pending</span>
+                    )}
+                  </td>
                   <td>
                     {lead.call_booked ? '✅ Booked' : lead.date_contacted ? '📧 Contacted' : '⏳ New'}
                   </td>
