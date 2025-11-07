@@ -426,6 +426,41 @@ async def get_leads(campaign_id: Optional[str] = None, current_user: User = Depe
     leads = await db.leads.find(query).to_list(1000)
     return [Lead(**lead) for lead in leads]
 
+@api_router.post("/leads/retry-failed-personas")
+async def retry_failed_personas(current_user: User = Depends(get_current_user)):
+    """
+    Background watcher - Retry persona generation for failed leads that now have data
+    """
+    # Find failed leads that now have sufficient data
+    failed_leads = await db.leads.find({
+        "user_id": current_user.id,
+        "persona_status": "failed",
+        "$or": [
+            {"$and": [{"company": {"$ne": None}}, {"title": {"$ne": None}}]},
+            {"linkedin_url": {"$ne": None}}
+        ]
+    }).to_list(100)
+    
+    if not failed_leads:
+        return {"message": "No failed leads with sufficient data found", "retried": 0}
+    
+    # Reset to pending and trigger research
+    lead_ids = []
+    for lead in failed_leads:
+        await db.leads.update_one(
+            {"id": lead["id"]},
+            {"$set": {"persona_status": "pending"}}
+        )
+        lead_ids.append(lead["id"])
+    
+    # Trigger research
+    asyncio.create_task(auto_research_personas_v2(lead_ids, current_user.id))
+    
+    return {
+        "message": f"Retrying persona generation for {len(lead_ids)} leads",
+        "retried": len(lead_ids)
+    }
+
 @api_router.get("/leads/{lead_id}", response_model=Lead)
 async def get_lead(lead_id: str, current_user: User = Depends(get_current_user)):
     lead = await db.leads.find_one({"id": lead_id, "user_id": current_user.id})
