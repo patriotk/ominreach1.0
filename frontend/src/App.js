@@ -848,8 +848,37 @@ const LeadsPage = () => {
 
       {editingLead && (
         <div className="modal-overlay" onClick={() => setEditingLead(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
             <h3>Edit Lead</h3>
+            
+            {/* Show Persona if exists */}
+            {editingLead.persona && (
+              <div className="persona-display">
+                <div className="persona-header">
+                  <strong>🎯 Generated Persona</strong>
+                  {editingLead.score && <span className="persona-score">{editingLead.score}/10</span>}
+                </div>
+                <p className="persona-text">{editingLead.persona}</p>
+                {editingLead.persona_status === 'completed' && (
+                  <small style={{ color: '#22c55e' }}>✅ Persona complete and saved as {{leadPersona}} variable</small>
+                )}
+              </div>
+            )}
+
+            {editingLead.persona_status === 'researching' && (
+              <div className="persona-display researching">
+                <span className="spinner-small"></span>
+                <span>Researching persona... This will take 30-60 seconds.</span>
+              </div>
+            )}
+
+            {editingLead.persona_status === 'failed' && (
+              <div className="persona-display failed">
+                <strong>❌ Persona Research Failed</strong>
+                <p>{editingLead.persona || 'Add company and title, then save to retry.'}</p>
+              </div>
+            )}
+
             <input
               type="text"
               placeholder="Name"
@@ -873,14 +902,14 @@ const LeadsPage = () => {
             />
             <input
               type="text"
-              placeholder="Company"
+              placeholder="Company (required for persona)"
               value={editingLead.company || ''}
               onChange={(e) => setEditingLead({ ...editingLead, company: e.target.value })}
               className="input"
             />
             <input
               type="text"
-              placeholder="Title"
+              placeholder="Title (required for persona)"
               value={editingLead.title || ''}
               onChange={(e) => setEditingLead({ ...editingLead, title: e.target.value })}
               className="input"
