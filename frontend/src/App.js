@@ -735,12 +735,17 @@ const LeadsPage = () => {
           <h1 className="page-title">Leads</h1>
           <p className="page-subtitle">Manage your contact list</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          {leads.filter(l => l.persona_status === 'failed').length > 0 && (
+            <button onClick={retryFailedPersonas} className="btn-secondary" style={{ fontSize: '0.9rem' }}>
+              🔄 Retry Failed ({leads.filter(l => l.persona_status === 'failed').length})
+            </button>
+          )}
           <button onClick={() => setShowBulkEnrich(true)} className="btn-secondary">
             🔧 Bulk Enrich
           </button>
           <button onClick={() => setShowPhantombuster(true)} className="btn-secondary" data-testid="phantombuster-import-btn">
-            🤖 Import from Phantombuster
+            🤖 Phantombuster
           </button>
           <button onClick={() => setShowImport(true)} className="btn-secondary" data-testid="import-leads-btn">
             📥 Import CSV
