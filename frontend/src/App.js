@@ -555,7 +555,15 @@ const LeadsPage = () => {
 
   const handleUpdate = async () => {
     try {
-      await api.patch(`/leads/${editingLead.id}`, editingLead);
+      await api.patch(`/leads/${editingLead.id}`, {
+        name: editingLead.name,
+        email: editingLead.email,
+        linkedin_url: editingLead.linkedin_url,
+        company: editingLead.company,
+        title: editingLead.title,
+        persona: editingLead.persona,
+        persona_status: editingLead.persona_status
+      });
       toast.success('Lead updated!');
       setEditingLead(null);
       fetchLeads();
