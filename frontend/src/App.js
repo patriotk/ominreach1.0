@@ -808,6 +808,14 @@ const LeadsPage = () => {
         />
       )}
 
+      {viewingLead && (
+        <LeadPersonaPanel
+          lead={viewingLead}
+          onClose={() => setViewingLead(null)}
+          onUpdate={() => { fetchLeads(); setViewingLead(null); }}
+        />
+      )}
+
       {showImport && (
         <div className="create-form">
           <h3>Import Contacts (CSV)</h3>
