@@ -521,6 +521,13 @@ const LeadsPage = () => {
 
   useEffect(() => {
     fetchLeads();
+    
+    // Auto-refresh every 10 seconds to show persona research progress
+    const interval = setInterval(() => {
+      fetchLeads();
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchLeads = async () => {
