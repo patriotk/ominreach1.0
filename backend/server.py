@@ -531,12 +531,22 @@ async def auto_research_personas(lead_ids: List[str], user_id: str):
                 if lead.get("persona"):
                     continue
                 
+                # Update status to researching
+                await db.leads.update_one(
+                    {"id": lead_id},
+                    {"$set": {"persona_status": "researching"}}
+                )
+                
                 # Generate persona
                 person_name = lead.get("name", "")
                 company = lead.get("company", "")
                 title = lead.get("title", "")
                 
                 if not person_name or not company:
+                    await db.leads.update_one(
+                        {"id": lead_id},
+                        {"$set": {"persona_status": "failed", "persona": "Insufficient data for research"}}
+                    )
                     continue
                 
                 # Use Perplexity for research
@@ -569,6 +579,7 @@ async def auto_research_personas(lead_ids: List[str], user_id: str):
                             {"id": lead_id},
                             {"$set": {
                                 "persona": persona,
+                                "persona_status": "completed",
                                 "score": 7.5,
                                 "date_contacted": datetime.now(timezone.utc)
                             }}
@@ -581,12 +592,21 @@ async def auto_research_personas(lead_ids: List[str], user_id: str):
                         )
                         
                         logging.info(f"Auto-generated persona for lead: {person_name}")
+                    else:
+                        await db.leads.update_one(
+                            {"id": lead_id},
+                            {"$set": {"persona_status": "failed", "persona": "Research failed"}}
+                        )
                 
                 # Small delay to avoid rate limits
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)
                 
             except Exception as e:
                 logging.error(f"Auto-research failed for lead {lead_id}: {str(e)}")
+                await db.leads.update_one(
+                    {"id": lead_id},
+                    {"$set": {"persona_status": "failed", "persona": f"Error: {str(e)}"}}
+                )
                 continue
     
     except Exception as e:
