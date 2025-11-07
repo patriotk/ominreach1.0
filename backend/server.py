@@ -59,6 +59,7 @@ class Lead(BaseModel):
     company: Optional[str] = None
     title: Optional[str] = None
     persona: Optional[str] = None
+    persona_status: str = "pending"  # pending, researching, completed, failed
     date_contacted: Optional[datetime] = None
     call_offered: bool = False
     call_booked: bool = False
