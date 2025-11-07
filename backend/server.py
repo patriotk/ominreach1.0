@@ -435,14 +435,55 @@ async def get_lead(lead_id: str, current_user: User = Depends(get_current_user))
 
 @api_router.patch("/leads/{lead_id}", response_model=Lead)
 async def update_lead(lead_id: str, update_data: UpdateLeadRequest, current_user: User = Depends(get_current_user)):
+    """
+    Update lead - Auto-retries persona research if was failed and now has required data
+    """
     lead = await db.leads.find_one({"id": lead_id, "user_id": current_user.id})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     
     update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    
+    # Check if we should retry persona research
+    should_retry_persona = False
+    
+    if lead.get("persona_status") in ["failed", "pending"]:
+        # If updating company or title, and both will exist after update
+        new_company = update_dict.get("company", lead.get("company"))
+        new_title = update_dict.get("title", lead.get("title"))
+        new_linkedin = update_dict.get("linkedin_url", lead.get("linkedin_url"))
+        
+        # Has minimum data for research
+        if (new_company and new_title) or new_linkedin:
+            should_retry_persona = True
+            update_dict["persona_status"] = "pending"
+    
     if update_dict:
         await db.leads.update_one({"id": lead_id}, {"$set": update_dict})
         lead.update(update_dict)
+        
+        # Update variables
+        updated_lead = await db.leads.find_one({"id": lead_id})
+        name_parts = updated_lead.get("name", "").split()
+        
+        await db.lead_variables.update_one(
+            {"lead_id": lead_id},
+            {"$set": {
+                "variables.leadName": updated_lead.get("name"),
+                "variables.name": updated_lead.get("name"),
+                "variables.first_name": name_parts[0] if name_parts else "",
+                "variables.last_name": " ".join(name_parts[1:]) if len(name_parts) > 1 else "",
+                "variables.email": updated_lead.get("email", ""),
+                "variables.company": updated_lead.get("company", ""),
+                "variables.job_title": updated_lead.get("title", ""),
+                "variables.linkedin_url": updated_lead.get("linkedin_url", "")
+            }},
+            upsert=True
+        )
+    
+    # Retry persona research if triggered
+    if should_retry_persona:
+        asyncio.create_task(auto_research_personas_v2([lead_id], current_user.id))
     
     return Lead(**lead)
 
