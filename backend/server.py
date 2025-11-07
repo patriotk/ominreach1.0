@@ -635,7 +635,7 @@ async def bulk_import_leads(import_data: BulkImportLeadsRequest, current_user: U
 
 async def auto_research_personas_v2(lead_ids: List[str], user_id: str):
     """
-    Auto-research personas using LinkedIn URLs when available
+    Auto-research personas using ONLY name and LinkedIn URL
     """
     try:
         # Get user's Perplexity key
@@ -646,12 +646,11 @@ async def auto_research_personas_v2(lead_ids: List[str], user_id: str):
             perplexity_key = os.getenv("PERPLEXITY_API_KEY")
         
         if not perplexity_key:
-            logging.info("No Perplexity key - skipping auto-research")
-            # Mark all as failed
+            logging.info("No Perplexity key - marking all as failed")
             for lead_id in lead_ids:
                 await db.leads.update_one(
                     {"id": lead_id},
-                    {"$set": {"persona_status": "failed", "persona": "Perplexity API key required"}}
+                    {"$set": {"persona_status": "failed", "persona": "Perplexity API key required in Settings"}}
                 )
             return
         
@@ -662,7 +661,7 @@ async def auto_research_personas_v2(lead_ids: List[str], user_id: str):
                 if not lead:
                     continue
                 
-                # Skip if already has persona
+                # Skip if already has completed persona (unless forcing regenerate)
                 if lead.get("persona") and lead.get("persona_status") == "completed":
                     continue
                 
@@ -673,26 +672,25 @@ async def auto_research_personas_v2(lead_ids: List[str], user_id: str):
                 )
                 
                 person_name = lead.get("name", "")
-                company = lead.get("company", "")
-                title = lead.get("title", "")
                 linkedin_url = lead.get("linkedin_url", "")
                 
-                # Validation - need at least name and (company OR linkedin_url)
-                if not person_name or (not company and not linkedin_url):
+                # Validation - need name AND linkedin URL
+                if not person_name or not linkedin_url:
                     await db.leads.update_one(
                         {"id": lead_id},
                         {"$set": {
                             "persona_status": "failed",
-                            "persona": "Insufficient data: need company and title for research"
+                            "persona": "Both name and LinkedIn URL required for persona generation"
                         }}
                     )
                     continue
                 
-                # Build research query - prefer LinkedIn URL if available
-                if linkedin_url:
-                    research_query = f"""Using the LinkedIn profile at {linkedin_url} for {person_name}, write ONE concise paragraph (3-4 sentences) describing their professional persona — their role, expertise, communication style, key focus areas, and career motivations. Keep it actionable for B2B outreach."""
-                else:
-                    research_query = f"""Search for {person_name}, {title} at {company}. Write ONE paragraph (3-4 sentences) describing their professional persona including: role, communication style, priorities, main challenge, and best outreach approach."""
+                # Build research query using ONLY name and LinkedIn URL
+                research_query = f"""Research {person_name} using their LinkedIn profile {linkedin_url} and any relevant publicly available information.
+
+Based on your findings, write one short, professional paragraph (no more than 4 sentences) that describes this person's professional persona — focusing on their likely expertise, role, style, goals, and professional tone.
+
+Write naturally and clearly, using plain business English. Avoid generic filler language like "hard-working professional," "dedicated individual," or "results-oriented." Don't repeat their job title verbatim. Be specific about their actual strengths, approach, and mindset."""
                 
                 # Use Perplexity for research
                 async with httpx.AsyncClient() as client:
@@ -705,7 +703,10 @@ async def auto_research_personas_v2(lead_ids: List[str], user_id: str):
                         json={
                             "model": "sonar-pro",
                             "messages": [
-                                {"role": "system", "content": "You are an expert B2B sales researcher. Create concise, single-paragraph professional personas. Never use bullet points or multiple paragraphs."},
+                                {
+                                    "role": "system",
+                                    "content": "You are an expert B2B sales researcher. Create concise, single-paragraph professional personas. Be specific and avoid generic phrases. Focus on actual professional attributes, communication style, and business approach."
+                                },
                                 {"role": "user", "content": research_query}
                             ],
                             "temperature": 0.7,
@@ -718,8 +719,14 @@ async def auto_research_personas_v2(lead_ids: List[str], user_id: str):
                         result = response.json()
                         persona = result.get("choices", [{}])[0].get("message", {}).get("content", "")
                         
-                        # Clean persona (remove any bullet points or formatting)
-                        persona = persona.replace('•', '').replace('*', '').strip()
+                        # Clean persona (remove bullets, asterisks, extra formatting)
+                        persona = persona.replace('•', '').replace('*', '').replace('#', '').strip()
+                        
+                        # Validate length (should be 3-4 sentences)
+                        sentences = persona.split('.')
+                        if len(sentences) > 5:
+                            # Take first 4 sentences
+                            persona = '. '.join(sentences[:4]) + '.'
                         
                         # Update lead with persona
                         await db.leads.update_one(
@@ -737,7 +744,8 @@ async def auto_research_personas_v2(lead_ids: List[str], user_id: str):
                             {"$set": {
                                 "variables.leadPersona": persona,
                                 "variables.persona": persona
-                            }}
+                            }},
+                            upsert=True
                         )
                         
                         logging.info(f"✅ Auto-generated persona for: {person_name}")
@@ -746,17 +754,17 @@ async def auto_research_personas_v2(lead_ids: List[str], user_id: str):
                             {"id": lead_id},
                             {"$set": {
                                 "persona_status": "failed",
-                                "persona": f"Research API error: {response.status_code}"
+                                "persona": f"Perplexity API error: {response.status_code}"
                             }}
                         )
                 
-                # Delay to avoid rate limits
+                # Delay to avoid rate limits (3 seconds between requests)
                 await asyncio.sleep(3)
                 
             except httpx.TimeoutException:
                 await db.leads.update_one(
                     {"id": lead_id},
-                    {"$set": {"persona_status": "failed", "persona": "Research timeout"}}
+                    {"$set": {"persona_status": "failed", "persona": "Research timeout - try again"}}
                 )
             except Exception as e:
                 logging.error(f"Auto-research failed for lead {lead_id}: {str(e)}")
