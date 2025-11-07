@@ -158,7 +158,7 @@ export const LeadPersonaPanel = ({ lead, onClose, onUpdate }) => {
                       </button>
                     </div>
                     <small style={{ color: '#22c55e', display: 'block', marginTop: '1rem' }}>
-                      ✅ Saved as <code>{{'{{'}}leadPersona{{'}}'}}</code> variable for message generation
+                      ✅ Saved as <code>{'{{leadPersona}}'}</code> variable for message generation
                     </small>
                   </div>
                 )}
