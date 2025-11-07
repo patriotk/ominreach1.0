@@ -2256,6 +2256,55 @@ textarea.input {
   animation: spin 0.8s linear infinite;
 }
 
+/* Persona Display in Modal */
+.persona-display {
+  padding: 1.5rem;
+  background: rgba(147, 197, 253, 0.08);
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.persona-display.researching {
+  background: rgba(251, 146, 60, 0.08);
+  border-color: rgba(251, 146, 60, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #fb923c;
+}
+
+.persona-display.failed {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.persona-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.persona-header strong {
+  color: #93c5fd;
+  font-size: 1rem;
+}
+
+.persona-text {
+  color: #e8e8ea;
+  line-height: 1.8;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.persona-display small {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
 @media (max-width: 768px) {
   .dashboard-layout {
     flex-direction: column;
