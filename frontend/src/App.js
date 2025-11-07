@@ -952,35 +952,35 @@ const LeadsPage = () => {
 
             <input
               type="text"
-              placeholder="Name"
+              placeholder="Name (required)"
               value={editingLead.name}
               onChange={(e) => setEditingLead({ ...editingLead, name: e.target.value })}
               className="input"
             />
             <input
               type="email"
-              placeholder="Email"
+              placeholder="Email (optional)"
               value={editingLead.email || ''}
               onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })}
               className="input"
             />
             <input
               type="text"
-              placeholder="LinkedIn URL"
+              placeholder="LinkedIn URL (required for persona generation)"
               value={editingLead.linkedin_url || ''}
               onChange={(e) => setEditingLead({ ...editingLead, linkedin_url: e.target.value })}
               className="input"
             />
             <input
               type="text"
-              placeholder="Company (required for persona)"
+              placeholder="Company (optional - extracted from LinkedIn)"
               value={editingLead.company || ''}
               onChange={(e) => setEditingLead({ ...editingLead, company: e.target.value })}
               className="input"
             />
             <input
               type="text"
-              placeholder="Title (required for persona)"
+              placeholder="Title (optional - extracted from LinkedIn)"
               value={editingLead.title || ''}
               onChange={(e) => setEditingLead({ ...editingLead, title: e.target.value })}
               className="input"
