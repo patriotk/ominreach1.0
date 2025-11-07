@@ -519,6 +519,7 @@ const LeadsPage = () => {
   const [showPhantombuster, setShowPhantombuster] = useState(false);
   const [showBulkEnrich, setShowBulkEnrich] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
+  const [viewingLead, setViewingLead] = useState(null);
   const [newLead, setNewLead] = useState({ name: '', email: '', linkedin_url: '', company: '', title: '' });
   const [importText, setImportText] = useState('');
 
