@@ -7,6 +7,7 @@ import { CampaignBuilder } from "./CampaignBuilder";
 import { AIAgentStudio } from "./AIAgentStudio";
 import { PhantombusterImport } from "./PhantombusterImport";
 import { BulkLeadEnrichment } from "./BulkLeadEnrichment";
+import { LeadPersonaPanel } from "./LeadPersonaPanel";
 import "@/App.css";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
