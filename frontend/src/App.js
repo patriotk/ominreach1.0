@@ -595,10 +595,20 @@ const LeadsPage = () => {
     }
   };
 
-  const editPersona = (lead) => {
+  const editPersona = async (lead) => {
     const newPersona = prompt('Edit persona:', lead.persona);
     if (newPersona && newPersona !== lead.persona) {
-      handleUpdate({ ...lead, persona: newPersona, persona_status: 'completed' });
+      try {
+        await api.patch(`/leads/${lead.id}`, { 
+          persona: newPersona,
+          persona_status: 'completed'
+        });
+        toast.success('Persona updated!');
+        setEditingLead({ ...lead, persona: newPersona });
+        fetchLeads();
+      } catch (error) {
+        toast.error('Failed to update persona');
+      }
     }
   };
 
