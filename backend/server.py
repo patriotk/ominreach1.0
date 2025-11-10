@@ -188,6 +188,21 @@ class BulkGenerateMessagesRequest(BaseModel):
     variant_name: str
     lead_ids: List[str]  # Generate for multiple leads
 
+class CreateAgentProfileRequest(BaseModel):
+    name: str
+    tone: str = "professional"
+    style: str = "medium"
+    focus: str = "value_driven"
+    avoid_words: List[str] = []
+    brand_personality: str = ""
+    model_provider: str = "openai"
+    model_name: str = "gpt-5"
+    temperature: float = 0.7
+
+class GenerateAllMessagesRequest(BaseModel):
+    campaign_id: str
+    generate_variants: bool = True  # Generate 3 variants per step
+
 class AIAgentConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
