@@ -493,6 +493,7 @@ const AgentProfileTab = ({ campaign, onSelectProfile }) => {
 
 const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, editingCampaign, setEditingCampaign }) => {
   const productInfo = campaignEdits.product_info || {};
+  const [uploading, setUploading] = useState(false);
 
   const updateProductInfo = (field, value) => {
     setCampaignEdits({
@@ -502,6 +503,36 @@ const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, 
         [field]: value
       }
     });
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.match(/\.(pdf|docx|txt)$/i)) {
+      toast.error('Only PDF, DOCX, and TXT files supported');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post(`/campaigns/${campaign.id}/upload-product-doc`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      toast.success('Document uploaded and parsed!');
+      
+      // Update local state
+      updateProductInfo('file_urls', [...(productInfo.file_urls || []), file.name]);
+      updateProductInfo('parsed_content', response.data.preview);
+      
+    } catch (error) {
+      toast.error('Upload failed');
+    }
+    setUploading(false);
   };
 
   return (
@@ -544,33 +575,67 @@ const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, 
         </div>
 
         <div className="form-group">
-          <label className="form-label">Product Description</label>
+          <label className="form-label">Product Summary</label>
           {editingCampaign ? (
             <textarea
               placeholder="Brief description of what you're offering"
-              value={productInfo.description || ''}
-              onChange={(e) => updateProductInfo('description', e.target.value)}
+              value={productInfo.summary || ''}
+              onChange={(e) => updateProductInfo('summary', e.target.value)}
               className="input"
               rows="4"
             />
           ) : (
-            <div className="display-value">{productInfo.description || 'Not set'}</div>
+            <div className="display-value">{productInfo.summary || 'Not set'}</div>
           )}
         </div>
 
         <div className="form-group">
-          <label className="form-label">Key Benefits</label>
+          <label className="form-label">Key Differentiators</label>
           {editingCampaign ? (
             <textarea
-              placeholder="Main benefits and value propositions"
-              value={productInfo.benefits || ''}
-              onChange={(e) => updateProductInfo('benefits', e.target.value)}
+              placeholder="What makes your product unique and better than alternatives"
+              value={productInfo.differentiators || productInfo.benefits || ''}
+              onChange={(e) => updateProductInfo('differentiators', e.target.value)}
               className="input"
               rows="3"
             />
           ) : (
-            <div className="display-value">{productInfo.benefits || 'Not set'}</div>
+            <div className="display-value">{productInfo.differentiators || productInfo.benefits || 'Not set'}</div>
           )}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Upload Product Documents (PDF, DOCX)</label>
+          <div className="file-upload-section">
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+              id="product-doc-upload"
+              disabled={uploading}
+            />
+            <label htmlFor="product-doc-upload" className="file-upload-btn" style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
+              {uploading ? '📤 Uploading...' : '📄 Upload Document'}
+            </label>
+            
+            {productInfo.file_urls && productInfo.file_urls.length > 0 && (
+              <div className="uploaded-files">
+                {productInfo.file_urls.map((filename, idx) => (
+                  <div key={idx} className="file-chip">
+                    ✅ {filename}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {productInfo.parsed_content && (
+              <div className="parsed-preview">
+                <strong>Extracted content preview:</strong>
+                <p>{productInfo.parsed_content.substring(0, 300)}...</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="form-group">
@@ -595,7 +660,7 @@ const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, 
         )}
       </div>
 
-      {!editingCampaign && (!productInfo.name || !productInfo.description) && (
+      {!editingCampaign && (!productInfo.name || !productInfo.summary) && (
         <div className="info-banner">
           <p>💡 Add product information to enable AI-powered message generation!</p>
         </div>
