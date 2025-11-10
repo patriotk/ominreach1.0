@@ -146,6 +146,18 @@ backend:
         comment: "Backend receives lead_limit parameter in PATCH /api/campaigns/{campaign_id} endpoint. Frontend sends lead_limit in assignLeads function."
 
 frontend:
+  - task: "AI Auto-Fill Product Info UI (Task 1)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/CampaignBuilder.js, /app/frontend/src/App.css"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated handleFileUpload to receive AI-extracted fields and auto-fill form. Added main_features display field. Auto-enables editing mode after AI extraction. Shows success toast with ✨ emoji."
+
   - task: "Add AI Agent tab as first tab in Campaign Builder"
     implemented: true
     working: "NA"
