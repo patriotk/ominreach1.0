@@ -17,6 +17,8 @@ from campaign_service import CampaignService
 import resend
 from phantombuster_service import PhantombusterService
 import asyncio
+from enhanced_ai_generator import EnhancedAIMessageGenerator
+from scheduling_service import CampaignScheduler
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
