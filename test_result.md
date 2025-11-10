@@ -109,6 +109,30 @@ user_problem_statement: |
   3. Fix duplicate step rendering in "🪜 Message Steps" tab
 
 backend:
+  - task: "Enhanced AI Message Generation (Task 2)"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/ai_product_analyzer.py, /app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added generate_enhanced_message() method to AIProductAnalyzer. Updated /api/campaigns/generate-message to merge product info, best practices, persona, agent profile, and previous message. Returns structured response with AI scoring."
+
+  - task: "Upload Best Practices per Step (Task 2)"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created POST /api/campaign-steps/{step_id}/upload-best-practices endpoint. Parses PDF/DOCX/TXT files and stores text in step.best_practices_context. Max 5000 characters stored per step."
+
   - task: "AI Auto-Fill Product Info (Task 1)"
     implemented: true
     working: "NA"
