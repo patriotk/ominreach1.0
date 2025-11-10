@@ -2115,7 +2115,7 @@ async def upload_product_document(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload and parse product documentation"""
+    """Upload, parse, and AI-analyze product documentation"""
     campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -2133,13 +2133,27 @@ async def upload_product_document(
     if not parsed_text:
         raise HTTPException(status_code=400, detail="Could not extract text from document")
     
+    # AI Analysis: Extract structured product info
+    analyzer = AIProductAnalyzer()
+    ai_extracted_data = await analyzer.analyze_product_document(parsed_text)
+    
     # Update campaign product info
     product_info = campaign.get("product_info", {})
     if "file_urls" not in product_info:
         product_info["file_urls"] = []
     
     product_info["file_urls"].append(file.filename)
-    product_info["parsed_content"] = parsed_text[:2000]  # Store first 2000 chars
+    product_info["parsed_content"] = parsed_text[:2000]  # Store first 2000 chars for reference
+    
+    # Auto-fill fields from AI analysis
+    if ai_extracted_data:
+        product_info["name"] = ai_extracted_data.get("product_name", product_info.get("name", ""))
+        product_info["summary"] = ai_extracted_data.get("product_summary", product_info.get("summary", ""))
+        product_info["differentiators"] = "\n".join(ai_extracted_data.get("key_differentiators", []))
+        product_info["cta"] = ai_extracted_data.get("call_to_action", product_info.get("cta", ""))
+        product_info["main_features"] = ai_extracted_data.get("main_features", [])
+        product_info["ai_extracted"] = True
+        product_info["ai_extraction_timestamp"] = datetime.now(timezone.utc).isoformat()
     
     await db.campaigns.update_one(
         {"id": campaign_id},
@@ -2147,10 +2161,12 @@ async def upload_product_document(
     )
     
     return {
-        "message": "Document uploaded and parsed",
+        "message": "Document uploaded, parsed, and analyzed with AI",
         "filename": file.filename,
         "extracted_length": len(parsed_text),
-        "preview": parsed_text[:300]
+        "preview": parsed_text[:300],
+        "ai_extracted_fields": ai_extracted_data if ai_extracted_data else None,
+        "auto_filled": bool(ai_extracted_data)
     }
 
 @api_router.post("/campaigns/{campaign_id}/generate-all-messages")
