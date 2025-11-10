@@ -153,7 +153,7 @@ Agent Tone: {tone}
 Message Style: {style} ({length_guide})
 Focus: {focus}
 Brand Personality: {brand_personality}
-{f'Avoid these words: {', '.join(avoid_words)}' if avoid_words else ''}
+{'Avoid these words: ' + ', '.join(avoid_words) if avoid_words else ''}
 
 === GENERATION INSTRUCTIONS ===
 1. Analyze the lead's persona to understand their communication preferences
