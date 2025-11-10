@@ -20,6 +20,7 @@ import asyncio
 from enhanced_ai_generator import EnhancedAIMessageGenerator
 from scheduling_service import CampaignScheduler
 from document_parser import DocumentParser
+from ai_product_analyzer import AIProductAnalyzer
 from fastapi import UploadFile, File
 
 ROOT_DIR = Path(__file__).parent
