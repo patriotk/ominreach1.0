@@ -998,6 +998,7 @@ const ScheduleBuilder = ({ campaign, onSaveSchedule }) => {
 
 const LeadsAssigner = ({ campaign, availableLeads, onAssignLeads }) => {
   const [selectedLeads, setSelectedLeads] = useState(campaign.lead_ids || []);
+  const [leadLimit, setLeadLimit] = useState(100);
 
   const toggleLead = (leadId) => {
     setSelectedLeads(prev =>
@@ -1007,14 +1008,30 @@ const LeadsAssigner = ({ campaign, availableLeads, onAssignLeads }) => {
     );
   };
 
+  const handleAssign = () => {
+    onAssignLeads(selectedLeads, leadLimit);
+  };
+
   return (
     <div className="leads-assigner">
       <div className="assigner-header">
         <h3>Assign Leads to Campaign</h3>
-        <div>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label style={{ marginRight: '0.5rem', color: '#a0a0b0' }}>Lead Limit:</label>
+            <input
+              type="number"
+              min="1"
+              max="10000"
+              value={leadLimit}
+              onChange={(e) => setLeadLimit(parseInt(e.target.value) || 100)}
+              className="input"
+              style={{ width: '100px', display: 'inline-block' }}
+            />
+          </div>
           <span>{selectedLeads.length} selected</span>
-          <button onClick={() => onAssignLeads(selectedLeads)} className="btn-primary">
-            Assign Selected
+          <button onClick={handleAssign} className="btn-primary">
+            Assign Selected (Max {leadLimit})
           </button>
         </div>
       </div>
@@ -1034,6 +1051,7 @@ const LeadsAssigner = ({ campaign, availableLeads, onAssignLeads }) => {
             <div>
               <strong>{lead.name}</strong>
               <p>{lead.title} at {lead.company}</p>
+              {lead.persona_status === 'completed' && <small style={{ color: '#22c55e' }}>✅ Persona ready</small>}
             </div>
           </div>
         ))}
