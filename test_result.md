@@ -109,6 +109,18 @@ user_problem_statement: |
   3. Fix duplicate step rendering in "🪜 Message Steps" tab
 
 backend:
+  - task: "AI Auto-Fill Product Info (Task 1)"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/ai_product_analyzer.py, /app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created AIProductAnalyzer class with GPT-5 integration. analyze_product_document() method extracts structured fields from document text. Endpoint POST /api/campaigns/{campaign_id}/upload-product-doc now calls AI analyzer and auto-fills product_info fields."
+
   - task: "Product document upload endpoint"
     implemented: true
     working: "NA"
