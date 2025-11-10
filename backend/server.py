@@ -994,19 +994,13 @@ async def sync_campaign_to_sheets(campaign_id: str, current_user: User = Depends
 @api_router.post("/campaigns/generate-message")
 async def generate_ai_message(request: GenerateMessageRequest, current_user: User = Depends(get_current_user)):
     """
-    Generate AI-powered message for campaign step based on persona and product info
+    Generate AI-powered message using multi-source context:
+    - Product Info
+    - Step Best Practices
+    - Lead Persona
+    - AI Agent Profile
+    - Previous Message
     """
-    # Get AI config for user/campaign
-    ai_config = await db.ai_agent_configs.find_one({
-        "user_id": current_user.id,
-        "$or": [{"campaign_id": request.campaign_id}, {"campaign_id": None}]
-    })
-    
-    if not ai_config:
-        # Create default config
-        ai_config = AIAgentConfig(user_id=current_user.id, campaign_id=request.campaign_id)
-        await db.ai_agent_configs.insert_one(ai_config.model_dump())
-    
     # Get campaign
     campaign = await db.campaigns.find_one({"id": request.campaign_id, "user_id": current_user.id})
     if not campaign:
@@ -1017,132 +1011,110 @@ async def generate_ai_message(request: GenerateMessageRequest, current_user: Use
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     
-    # Get product info
+    # Build multi-source context
+    # 1. Product Info Context
     product_info = campaign.get("product_info", {})
-    product_name = product_info.get("name", "our product")
-    product_description = product_info.get("description", "")
-    product_benefits = product_info.get("benefits", "")
-    product_cta = product_info.get("cta", "learn more")
+    product_context = f"""Product: {product_info.get('name', 'N/A')}
+Summary: {product_info.get('summary', 'N/A')}
+Differentiators: {product_info.get('differentiators', 'N/A')}
+CTA: {product_info.get('cta', 'N/A')}"""
     
-    # Get persona
-    persona = lead.get("persona", "Professional contact")
-    lead_name = lead.get("name", "")
-    lead_title = lead.get("title", "")
-    lead_company = lead.get("company", "")
+    if product_info.get('main_features'):
+        product_context += f"\nMain Features:\n- " + "\n- ".join(product_info.get('main_features', []))
     
-    # Get stored variables
-    lead_vars = await db.lead_variables.find_one({"lead_id": request.lead_id})
-    if lead_vars:
-        variables = lead_vars.get("variables", {})
-        persona = variables.get("persona", persona)
+    # 2. Step Best Practices Context
+    message_steps = campaign.get("message_steps", [])
+    step_best_practices = "N/A"
+    for step in message_steps:
+        if step.get("step_number") == request.step_number:
+            step_best_practices = step.get("best_practices_context", "N/A")
+            break
     
-    # Get step-specific config
-    step_config_map = {
-        1: {
-            "system_prompt": ai_config.get("step_1_system_prompt", ""),
-            "instructions": ai_config.get("step_1_instructions", "")
-        },
-        2: {
-            "system_prompt": ai_config.get("step_2_system_prompt", ""),
-            "instructions": ai_config.get("step_2_instructions", "")
-        },
-        3: {
-            "system_prompt": ai_config.get("step_3_system_prompt", ""),
-            "instructions": ai_config.get("step_3_instructions", "")
+    # 3. AI Agent Profile
+    agent_profile = {}
+    if campaign.get("agent_profile_id"):
+        profile_doc = await db.ai_agent_profiles.find_one({"id": campaign["agent_profile_id"]})
+        if profile_doc:
+            agent_profile = {
+                "tone": profile_doc.get("tone", "professional"),
+                "style": profile_doc.get("style", "concise"),
+                "focus": profile_doc.get("focus", "value-driven"),
+                "avoid_words": profile_doc.get("avoid_words", []),
+                "brand_personality": profile_doc.get("brand_personality", "")
+            }
+    else:
+        agent_profile = {
+            "tone": "professional",
+            "style": "concise",
+            "focus": "value-driven",
+            "avoid_words": [],
+            "brand_personality": ""
         }
+    
+    # 4. Previous Message (for follow-ups)
+    previous_message = "N/A (First message in sequence)"
+    if request.step_number > 1:
+        # Try to find previous step's message for this lead
+        prev_messages = await db.messages.find({
+            "campaign_id": request.campaign_id,
+            "lead_id": request.lead_id,
+            "step_number": request.step_number - 1
+        }).to_list(1)
+        
+        if prev_messages:
+            previous_message = prev_messages[0].get("content", "N/A")
+    
+    # 5. Lead Context
+    lead_dict = {
+        "id": lead.get("id"),
+        "name": lead.get("name", "Unknown"),
+        "title": lead.get("title", "N/A"),
+        "company": lead.get("company", "N/A"),
+        "persona_summary": lead.get("persona", "Professional contact")
     }
     
-    step_config = step_config_map.get(request.step_number, step_config_map[1])
-    channel = campaign.get("goal_type", "email")
-    
-    # Generate message using configured model
+    # Generate message using enhanced AI generator
     try:
-        llm_key = os.getenv("EMERGENT_LLM_KEY")
+        analyzer = AIProductAnalyzer()
+        result = await analyzer.generate_enhanced_message(
+            product_info=product_context,
+            step_best_practices=step_best_practices,
+            agent_profile=agent_profile,
+            lead=lead_dict,
+            previous_message=previous_message,
+            campaign_type=campaign.get("goal_type", "email"),
+            step_number=request.step_number
+        )
         
-        # Use user's model preferences
-        provider = ai_config.get("model_provider", "openai")
-        model = ai_config.get("model_name", "gpt-5")
-        temperature = ai_config.get("temperature", 0.7)
-        max_tokens = ai_config.get("max_tokens", 500)
-        
-        chat = LlmChat(
-            api_key=llm_key,
-            session_id=f"msg-gen-{current_user.id}-{request.lead_id}",
-            system_message=step_config["system_prompt"]
-        ).with_model(provider, model)
-        
-        generation_prompt = f"""Generate a {channel} message for {request.variant_name} at Step {request.step_number}.
-
-LEAD PERSONA:
-{persona}
-
-LEAD DETAILS:
-- Name: {lead_name}
-- Title: {lead_title}  
-- Company: {lead_company}
-
-PRODUCT:
-- Name: {product_name}
-- Description: {product_description}
-- Benefits: {product_benefits}
-- CTA: {product_cta}
-
-INSTRUCTIONS:
-{step_config["instructions"]}
-
-REQUIREMENTS:
-- Use personalization tokens: {{{{first_name}}}}, {{{{company}}}}, {{{{job_title}}}}
-- Match persona's communication style
-- Highlight product benefit most relevant to their role
-{"- Format as JSON with subject and body keys" if channel == "email" else "- Return just the message body"}
-
-Generate the message now:"""
-        
-        message_obj = UserMessage(text=generation_prompt)
-        ai_response = await chat.send_message(message_obj)
+        if not result:
+            raise HTTPException(status_code=500, detail="AI message generation failed")
         
         # Log usage
         usage_log = AIUsageLog(
             user_id=current_user.id,
             campaign_id=request.campaign_id,
-            operation="generate_message",
-            provider=provider,
-            model=model,
-            prompt_tokens=len(generation_prompt.split()) * 1.3,  # Rough estimate
-            completion_tokens=len(ai_response.split()) * 1.3,
-            total_tokens=len(generation_prompt.split()) * 1.3 + len(ai_response.split()) * 1.3,
-            estimated_cost=0.0  # Calculate based on model pricing
+            operation="generate_message_enhanced",
+            provider="openai",
+            model="gpt-5",
+            prompt_tokens=500,  # Estimate
+            completion_tokens=200,  # Estimate
+            total_tokens=700,
+            estimated_cost=0.0
         )
         await db.ai_usage_logs.insert_one(usage_log.model_dump())
         
-        # Parse response
-        if channel == "email":
-            import json
-            try:
-                result = json.loads(ai_response)
-                return {
-                    "subject": result.get("subject", ""),
-                    "content": result.get("body", ai_response),
-                    "variant": request.variant_name,
-                    "tokens_used": int(usage_log.total_tokens)
-                }
-            except:
-                lines = ai_response.split('\n', 1)
-                return {
-                    "subject": lines[0].replace("Subject:", "").strip() if len(lines) > 0 else "Outreach",
-                    "content": lines[1].strip() if len(lines) > 1 else ai_response,
-                    "variant": request.variant_name,
-                    "tokens_used": int(usage_log.total_tokens)
-                }
-        else:
-            return {
-                "content": ai_response,
-                "variant": request.variant_name,
-                "tokens_used": int(usage_log.total_tokens)
-            }
+        return {
+            "subject": result.get("subject", ""),
+            "content": result.get("body", ""),
+            "variant": request.variant_name,
+            "tokens_used": 700,
+            "ai_score": result.get("ai_score", {}),
+            "reasoning": result.get("reasoning", ""),
+            "tone_used": result.get("tone_used", "")
+        }
     
     except Exception as e:
-        logging.error(f"AI message generation error: {str(e)}")
+        logging.error(f"Enhanced AI message generation error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
 
 @api_router.post("/campaigns/bulk-generate-messages")
