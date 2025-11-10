@@ -250,11 +250,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Add AI Agent tab as first tab in Campaign Builder"
-    - "Product Info file upload UI"
-    - "Product document upload endpoint"
-    - "Lead limit input in LeadsAssigner"
-    - "Fix duplicate step rendering"
+    - "AI Auto-Fill Product Info (Task 1)"
+    - "Enhanced AI Message Generation (Task 2)"
+    - "Upload Best Practices per Step (Task 2)"
+    - "Best Practices Upload UI per Step (Task 2)"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
