@@ -701,6 +701,43 @@ const StepsBuilder = ({ campaign, onAddStep, onUpdateVariant, onSaveStep, leads,
                     <span>hours</span>
                   </div>
                 </div>
+
+                <div className="timing-group">
+                  <label>Send Window (24hr format):</label>
+                  <div className="timing-inputs">
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      value={step.send_window_start_hour || 9}
+                      onChange={(e) => updateStepTiming(stepIndex, 'send_window_start_hour', parseInt(e.target.value))}
+                      className="input timing-input"
+                      placeholder="Start"
+                    />
+                    <span>to</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      value={step.send_window_end_hour || 17}
+                      onChange={(e) => updateStepTiming(stepIndex, 'send_window_end_hour', parseInt(e.target.value))}
+                      className="input timing-input"
+                      placeholder="End"
+                    />
+                    <span>(e.g., 9 to 17 = 9am-5pm)</span>
+                  </div>
+                </div>
+
+                <div className="timing-group">
+                  <label>Best Practices for this step:</label>
+                  <textarea
+                    value={step.best_practices || ''}
+                    onChange={(e) => updateStepTiming(stepIndex, 'best_practices', e.target.value)}
+                    className="input"
+                    rows="2"
+                    placeholder="E.g., Keep under 100 words, end with question, mention specific pain point..."
+                  />
+                </div>
               </div>
 
               {/* A/B Variants */}
