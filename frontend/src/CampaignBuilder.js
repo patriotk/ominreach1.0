@@ -406,6 +406,91 @@ export const CampaignBuilder = () => {
   );
 };
 
+const AgentProfileTab = ({ campaign, onSelectProfile }) => {
+  const [showManager, setShowManager] = useState(false);
+  const [currentProfile, setCurrentProfile] = useState(null);
+
+  useEffect(() => {
+    if (campaign.agent_profile_id) {
+      fetchProfile();
+    }
+  }, [campaign.agent_profile_id]);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get(`/ai-agent-profiles`);
+      const profile = response.data.find(p => p.id === campaign.agent_profile_id);
+      setCurrentProfile(profile);
+    } catch (error) {
+      console.error('Failed to load profile');
+    }
+  };
+
+  return (
+    <div className="agent-profile-tab">
+      <h3>\ud83e\udde0 AI Agent Configuration</h3>
+      <p style={{ color: '#a0a0b0', marginBottom: '2rem' }}>
+        Configure the AI agent that will generate personalized messages for this campaign.
+      </p>
+
+      {currentProfile ? (
+        <div className="current-profile-display">
+          <div className="profile-card-large">
+            <h4>{currentProfile.name}</h4>
+            <div className="profile-details">
+              <div className="detail-row">
+                <span>Tone:</span>
+                <span className="badge">{currentProfile.tone}</span>
+              </div>
+              <div className="detail-row">
+                <span>Style:</span>
+                <span className="badge">{currentProfile.style}</span>
+              </div>
+              <div className="detail-row">
+                <span>Focus:</span>
+                <span className="badge">{currentProfile.focus}</span>
+              </div>
+              {currentProfile.brand_personality && (
+                <div className="detail-row">
+                  <span>Brand:</span>
+                  <span>{currentProfile.brand_personality}</span>
+                </div>
+              )}
+              {currentProfile.avoid_words && currentProfile.avoid_words.length > 0 && (
+                <div className="detail-row">
+                  <span>Avoids:</span>
+                  <span>{currentProfile.avoid_words.join(', ')}</span>
+                </div>
+              )}
+            </div>
+            <button onClick={() => setShowManager(true)} className="btn-secondary" style={{ marginTop: '1rem' }}>
+              Change Agent Profile
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="no-profile-selected">
+          <p>\u26a0\ufe0f No AI agent selected for this campaign.</p>
+          <button onClick={() => setShowManager(true)} className="btn-primary">
+            Select AI Agent Profile
+          </button>
+        </div>
+      )}
+
+      {showManager && (
+        <AIAgentProfileManager
+          onClose={() => setShowManager(false)}
+          onSelect={(profileId) => {
+            onSelectProfile(profileId);
+            setShowManager(false);
+          }}
+          campaignId={campaign.id}
+        />
+      )}
+    </div>
+  );
+};
+
 const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, editingCampaign, setEditingCampaign }) => {
   const productInfo = campaignEdits.product_info || {};
 
