@@ -2169,6 +2169,61 @@ async def upload_product_document(
         "auto_filled": bool(ai_extracted_data)
     }
 
+
+@api_router.post("/campaign-steps/{step_id}/upload-best-practices")
+async def upload_step_best_practices(
+    step_id: str,
+    campaign_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload and parse best practices document for a specific campaign step"""
+    campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Validate file type
+    if not file.filename.endswith(('.pdf', '.docx', '.txt')):
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files supported")
+    
+    # Read file content
+    content = await file.read()
+    
+    # Parse document
+    parsed_text = DocumentParser.parse_file(file.filename, content)
+    
+    if not parsed_text:
+        raise HTTPException(status_code=400, detail="Could not extract text from document")
+    
+    # Find the step and update its best_practices_context
+    message_steps = campaign.get("message_steps", [])
+    step_found = False
+    
+    for step in message_steps:
+        if step.get("id") == step_id:
+            step["best_practices_context"] = parsed_text[:5000]  # Store first 5000 chars
+            step["best_practices_file"] = file.filename
+            step["best_practices_updated_at"] = datetime.now(timezone.utc).isoformat()
+            step_found = True
+            break
+    
+    if not step_found:
+        raise HTTPException(status_code=404, detail="Step not found in campaign")
+    
+    # Update campaign with modified steps
+    await db.campaigns.update_one(
+        {"id": campaign_id},
+        {"$set": {"message_steps": message_steps}}
+    )
+    
+    return {
+        "message": "Best practices uploaded and parsed",
+        "filename": file.filename,
+        "step_id": step_id,
+        "extracted_length": len(parsed_text),
+        "preview": parsed_text[:300]
+    }
+
 @api_router.post("/campaigns/{campaign_id}/generate-all-messages")
 async def generate_all_campaign_messages(
     campaign_id: str,
