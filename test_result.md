@@ -263,3 +263,42 @@ agent_communication:
       ✅ Max text analyzed: First 10,000 characters from document
       
       Ready for testing with actual PDF/DOCX documents!
+  
+  - agent: "main"
+    message: |
+      TASK 2 - Enhanced AI Message Generation - IMPLEMENTATION COMPLETE:
+      
+      ✅ Backend Implementation:
+         - Added POST /api/campaign-steps/{step_id}/upload-best-practices endpoint
+         - Stores best_practices_context per step (first 5000 chars)
+         - Updated /api/campaigns/generate-message to use multi-source context:
+           * Product info (name, summary, differentiators, CTA, features)
+           * Step-specific best practices documents
+           * Lead persona summary
+           * AI Agent profile (tone, style, focus, avoid_words, brand)
+           * Previous message (for follow-ups)
+         - Uses GPT-5 with enhanced prompt template from Task 2
+         - Returns: subject, body, ai_score (clarity, personalization, relevance), reasoning, tone_used
+      
+      ✅ Frontend Implementation:
+         - Created BestPracticesUpload component for per-step document upload
+         - Added upload section in each step card (Message Steps tab)
+         - Shows uploaded filename and 200-char preview
+         - Replace functionality for updating best practices docs
+         - Integrated into StepsBuilder component
+      
+      ✅ AI Context Merging:
+         - Product: Structured fields from product_info
+         - Best Practices: Parsed text from uploaded docs per step
+         - Persona: Lead's AI-generated persona summary
+         - Agent Profile: Selected AI agent configuration
+         - Previous Message: Retrieved from messages collection for follow-ups
+      
+      ✅ AI Scoring System:
+         - Clarity (0-10)
+         - Personalization (0-10)
+         - Relevance (0-10)
+         - Total (average)
+         - Reasoning explanation included
+      
+      All Task 2 features ready for testing!
