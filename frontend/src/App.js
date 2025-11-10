@@ -522,6 +522,8 @@ const LeadsPage = () => {
   const [showBulkEnrich, setShowBulkEnrich] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [viewingLead, setViewingLead] = useState(null);
+  const [previewingLead, setPreviewingLead] = useState(null);
+  const [activeCampaign, setActiveCampaign] = useState(null);
   const [newLead, setNewLead] = useState({ name: '', email: '', linkedin_url: '', company: '', title: '' });
   const [importText, setImportText] = useState('');
 
