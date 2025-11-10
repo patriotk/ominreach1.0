@@ -263,6 +263,21 @@ export const CampaignBuilder = () => {
     }
   };
 
+  const generateAllMessages = async () => {
+    setGeneratingAll(true);
+    try {
+      const response = await api.post(`/campaigns/${campaignId}/generate-all-messages`, {
+        campaign_id: campaignId,
+        generate_variants: true
+      });
+      toast.success(`Generated ${response.data.total} messages with AI scoring!`);
+      fetchCampaign();
+    } catch (error) {
+      toast.error('Bulk generation failed');
+    }
+    setGeneratingAll(false);
+  };
+
   if (loading) {
     return <div className="loading-screen"><div className="loading-spinner"></div></div>;
   }
