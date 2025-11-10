@@ -1215,3 +1215,72 @@ const CampaignAnalytics = ({ campaignId }) => {
     </div>
   );
 };
+
+
+const BestPracticesUpload = ({ stepId, campaignId, existingFile, preview }) => {
+  const [uploading, setUploading] = useState(false);
+  const [file, setFile] = useState(existingFile);
+  const [previewText, setPreviewText] = useState(preview);
+
+  const handleUpload = async (event) => {
+    const uploadedFile = event.target.files[0];
+    if (!uploadedFile) return;
+
+    if (!uploadedFile.name.match(/\.(pdf|docx|txt)$/i)) {
+      toast.error('Only PDF, DOCX, and TXT files supported');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+
+      const response = await api.post(
+        `/campaign-steps/${stepId}/upload-best-practices?campaign_id=${campaignId}`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      toast.success('✅ Best practices uploaded!');
+      setFile(response.data.filename);
+      setPreviewText(response.data.preview);
+    } catch (error) {
+      toast.error('Upload failed');
+    }
+    setUploading(false);
+  };
+
+  return (
+    <div className="best-practices-upload">
+      <input
+        type="file"
+        accept=".pdf,.docx,.txt"
+        onChange={handleUpload}
+        style={{ display: 'none' }}
+        id={`bp-upload-${stepId}`}
+        disabled={uploading}
+      />
+      <label
+        htmlFor={`bp-upload-${stepId}`}
+        className="file-upload-btn"
+        style={{ cursor: uploading ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}
+      >
+        {uploading ? '📤 Uploading...' : file ? '📄 Replace Document' : '📄 Upload Document'}
+      </label>
+
+      {file && (
+        <div className="uploaded-file-info" style={{ marginTop: '0.5rem' }}>
+          <div className="file-chip">✅ {file}</div>
+          {previewText && (
+            <div className="parsed-preview" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+              <strong>Preview:</strong>
+              <p>{previewText}...</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
