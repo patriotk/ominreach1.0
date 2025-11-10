@@ -2107,6 +2107,50 @@ async def list_agent_profiles(current_user: User = Depends(get_current_user)):
     profiles = await db.ai_agent_profiles.find({"user_id": current_user.id}, {"_id": 0}).to_list(100)
     return profiles
 
+@api_router.post("/campaigns/{campaign_id}/upload-product-doc")
+async def upload_product_document(
+    campaign_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload and parse product documentation"""
+    campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Validate file type
+    if not file.filename.endswith(('.pdf', '.docx', '.txt')):
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files supported")
+    
+    # Read file content
+    content = await file.read()
+    
+    # Parse document
+    parsed_text = DocumentParser.parse_file(file.filename, content)
+    
+    if not parsed_text:
+        raise HTTPException(status_code=400, detail="Could not extract text from document")
+    
+    # Update campaign product info
+    product_info = campaign.get("product_info", {})
+    if "file_urls" not in product_info:
+        product_info["file_urls"] = []
+    
+    product_info["file_urls"].append(file.filename)
+    product_info["parsed_content"] = parsed_text[:2000]  # Store first 2000 chars
+    
+    await db.campaigns.update_one(
+        {"id": campaign_id},
+        {"$set": {"product_info": product_info}}
+    )
+    
+    return {
+        "message": "Document uploaded and parsed",
+        "filename": file.filename,
+        "extracted_length": len(parsed_text),
+        "preview": parsed_text[:300]
+    }
+
 @api_router.post("/campaigns/{campaign_id}/generate-all-messages")
 async def generate_all_campaign_messages(
     campaign_id: str,
@@ -2141,9 +2185,12 @@ async def generate_all_campaign_messages(
     # Get product info
     product_info = campaign.get("product_info", {})
     
-    # Get leads
+    # Get leads (with limit)
     lead_ids = campaign.get("lead_ids", [])
-    leads = await db.leads.find({"id": {"$in": lead_ids}}).to_list(len(lead_ids))
+    lead_limit = request.lead_limit if hasattr(request, 'lead_limit') and request.lead_limit else len(lead_ids)
+    lead_limit = min(lead_limit, 10000)  # Max 10k
+    
+    leads = await db.leads.find({"id": {"$in": lead_ids}}).limit(lead_limit).to_list(lead_limit)
     
     # Get steps
     steps = campaign.get("message_steps", [])
@@ -2159,7 +2206,7 @@ async def generate_all_campaign_messages(
     results = []
     
     # Generate for each lead and step
-    for lead in leads[:10]:  # Limit to 10 for performance
+    for lead in leads:
         lead_vars = await db.lead_variables.find_one({"lead_id": lead["id"]})
         lead_data = lead_vars.get("variables", {}) if lead_vars else {}
         lead_data["id"] = lead["id"]
@@ -2206,14 +2253,18 @@ async def generate_all_campaign_messages(
                 total_generated += 1
                 results.append({"lead": lead["name"], "step": step.get("step_number"), "score": result.get("total_score")})
                 
+                # Small delay to avoid rate limits
+                await asyncio.sleep(0.5)
+                
             except Exception as e:
                 logging.error(f"Message generation failed: {str(e)}")
                 continue
     
     return {
-        "message": f"Generated {total_generated} messages",
+        "message": f"Generated {total_generated} messages for {len(leads)} leads",
         "total": total_generated,
-        "results": results
+        "leads_processed": len(leads),
+        "results": results[:20]  # Return first 20
     }
 
 @api_router.get("/campaigns/{campaign_id}/preview-messages/{lead_id}")
