@@ -321,6 +321,12 @@ export const CampaignBuilder = () => {
 
       <div className="builder-tabs">
         <button
+          className={`tab ${activeTab === 'agent' ? 'active' : ''}`}
+          onClick={() => setActiveTab('agent')}
+        >
+          🧠 AI Agent
+        </button>
+        <button
           className={`tab ${activeTab === 'product' ? 'active' : ''}`}
           onClick={() => setActiveTab('product')}
         >
@@ -330,25 +336,25 @@ export const CampaignBuilder = () => {
           className={`tab ${activeTab === 'steps' ? 'active' : ''}`}
           onClick={() => setActiveTab('steps')}
         >
-          Message Steps
+          🪜 Message Steps
         </button>
         <button
           className={`tab ${activeTab === 'schedule' ? 'active' : ''}`}
           onClick={() => setActiveTab('schedule')}
         >
-          Schedule
+          📅 Schedule
         </button>
         <button
           className={`tab ${activeTab === 'leads' ? 'active' : ''}`}
           onClick={() => setActiveTab('leads')}
         >
-          Leads
+          👥 Leads
         </button>
         <button
           className={`tab ${activeTab === 'analytics' ? 'active' : ''}`}
           onClick={() => setActiveTab('analytics')}
         >
-          Analytics
+          📊 Analytics
         </button>
       </div>
 
