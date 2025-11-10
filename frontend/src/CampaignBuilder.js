@@ -24,11 +24,14 @@ export const CampaignBuilder = () => {
   const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('product');
+  const [activeTab, setActiveTab] = useState('agent');
   const [leads, setLeads] = useState([]);
   const [initializingSteps, setInitializingSteps] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(false);
   const [campaignEdits, setCampaignEdits] = useState({});
+  const [showAgentSelector, setShowAgentSelector] = useState(false);
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [generatingAll, setGeneratingAll] = useState(false);
 
   useEffect(() => {
     if (campaignId) {
