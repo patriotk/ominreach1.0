@@ -19,6 +19,8 @@ from phantombuster_service import PhantombusterService
 import asyncio
 from enhanced_ai_generator import EnhancedAIMessageGenerator
 from scheduling_service import CampaignScheduler
+from document_parser import DocumentParser
+from fastapi import UploadFile, File
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
