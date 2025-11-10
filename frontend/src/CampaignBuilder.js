@@ -348,6 +348,17 @@ export const CampaignBuilder = () => {
       </div>
 
       <div className="builder-content">
+        {activeTab === 'agent' && (
+          <AgentProfileTab
+            campaign={campaign}
+            onSelectProfile={(profileId) => {
+              api.patch(`/campaigns/${campaignId}`, { agent_profile_id: profileId });
+              fetchCampaign();
+              toast.success('Agent profile linked!');
+            }}
+          />
+        )}
+
         {activeTab === 'product' && (
           <ProductInfoEditor
             campaign={campaign}
