@@ -2076,6 +2076,211 @@ async def send_outreach(campaign_id: str, lead_ids: List[str], variant_id: str, 
         "using_real_email": bool(channel == "email" and resend_api_key)
     }
 
+# ============ AI AGENT PROFILES ============
+
+@api_router.post("/ai-agent-profiles")
+async def create_agent_profile(profile_data: CreateAgentProfileRequest, current_user: User = Depends(get_current_user)):
+    """Create AI agent profile for message generation"""
+    profile = {
+        "id": str(uuid.uuid4()),
+        "name": profile_data.name,
+        "tone": profile_data.tone,
+        "style": profile_data.style,
+        "focus": profile_data.focus,
+        "avoid_words": profile_data.avoid_words,
+        "brand_personality": profile_data.brand_personality,
+        "model_provider": profile_data.model_provider,
+        "model_name": profile_data.model_name,
+        "temperature": profile_data.temperature,
+        "user_id": current_user.id,
+        "created_at": datetime.now(timezone.utc)
+    }
+    
+    await db.ai_agent_profiles.insert_one(profile)
+    return profile
+
+@api_router.get("/ai-agent-profiles")
+async def list_agent_profiles(current_user: User = Depends(get_current_user)):
+    """List all AI agent profiles for user"""
+    profiles = await db.ai_agent_profiles.find({"user_id": current_user.id}, {"_id": 0}).to_list(100)
+    return profiles
+
+@api_router.post("/campaigns/{campaign_id}/generate-all-messages")
+async def generate_all_campaign_messages(
+    campaign_id: str,
+    request: GenerateAllMessagesRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate AI messages for all leads in campaign with scoring"""
+    campaign = await db.campaigns.find_one({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Get agent profile
+    agent_profile_id = campaign.get("agent_profile_id")
+    agent_profile = {}
+    
+    if agent_profile_id:
+        agent_profile = await db.ai_agent_profiles.find_one({"id": agent_profile_id}, {"_id": 0})
+    
+    if not agent_profile:
+        # Use defaults
+        agent_profile = {
+            "tone": "professional",
+            "style": "medium",
+            "focus": "value_driven",
+            "avoid_words": [],
+            "brand_personality": "",
+            "model_provider": "openai",
+            "model_name": "gpt-5",
+            "temperature": 0.7
+        }
+    
+    # Get product info
+    product_info = campaign.get("product_info", {})
+    
+    # Get leads
+    lead_ids = campaign.get("lead_ids", [])
+    leads = await db.leads.find({"id": {"$in": lead_ids}}).to_list(len(lead_ids))
+    
+    # Get steps
+    steps = campaign.get("message_steps", [])
+    
+    if not steps:
+        raise HTTPException(status_code=400, detail="Campaign has no message steps configured")
+    
+    # Initialize AI generator
+    llm_key = os.getenv("EMERGENT_LLM_KEY")
+    ai_generator = EnhancedAIMessageGenerator(llm_key)
+    
+    total_generated = 0
+    results = []
+    
+    # Generate for each lead and step
+    for lead in leads[:10]:  # Limit to 10 for performance
+        lead_vars = await db.lead_variables.find_one({"lead_id": lead["id"]})
+        lead_data = lead_vars.get("variables", {}) if lead_vars else {}
+        lead_data["id"] = lead["id"]
+        lead_data["leadName"] = lead_data.get("leadName", lead.get("name"))
+        lead_data["leadPersona"] = lead_data.get("leadPersona", lead.get("persona", ""))
+        
+        for step in steps:
+            step_config = {
+                "step_number": step.get("step_number"),
+                "step_name": step.get("step_name", f"Step {step.get('step_number')}"),
+                "purpose": step.get("purpose", ""),
+                "best_practices": step.get("best_practices", "")
+            }
+            
+            try:
+                # Generate message with scoring
+                result = await ai_generator.generate_message_with_scoring(
+                    lead_data,
+                    product_info,
+                    step_config,
+                    agent_profile,
+                    campaign.get("goal_type", "email")
+                )
+                
+                # Store generated message
+                gen_msg = {
+                    "id": str(uuid.uuid4()),
+                    "campaign_id": campaign_id,
+                    "lead_id": lead["id"],
+                    "step_number": step.get("step_number"),
+                    "variant_index": 0,
+                    "subject": result.get("subject"),
+                    "body": result.get("body", ""),
+                    "reasoning": result.get("reasoning", ""),
+                    "ai_score_clarity": result.get("clarity_score", 0.0),
+                    "ai_score_personalization": result.get("personalization_score", 0.0),
+                    "ai_score_relevance": result.get("relevance_score", 0.0),
+                    "ai_score_total": result.get("total_score", 0.0),
+                    "status": "draft",
+                    "generated_at": datetime.now(timezone.utc)
+                }
+                
+                await db.generated_messages.insert_one(gen_msg)
+                total_generated += 1
+                results.append({"lead": lead["name"], "step": step.get("step_number"), "score": result.get("total_score")})
+                
+            except Exception as e:
+                logging.error(f"Message generation failed: {str(e)}")
+                continue
+    
+    return {
+        "message": f"Generated {total_generated} messages",
+        "total": total_generated,
+        "results": results
+    }
+
+@api_router.get("/campaigns/{campaign_id}/preview-messages/{lead_id}")
+async def preview_lead_messages(campaign_id: str, lead_id: str, current_user: User = Depends(get_current_user)):
+    """Get generated messages for specific lead"""
+    messages = await db.generated_messages.find({
+        "campaign_id": campaign_id,
+        "lead_id": lead_id
+    }, {"_id": 0}).sort("step_number", 1).to_list(10)
+    
+    # Get step names from campaign
+    campaign = await db.campaigns.find_one({"id": campaign_id})
+    steps_map = {s.get("step_number"): s.get("step_name", f"Step {s.get('step_number')}") 
+                 for s in campaign.get("message_steps", [])}
+    
+    for msg in messages:
+        msg["step_name"] = steps_map.get(msg["step_number"], f"Step {msg['step_number']}")
+    
+    return {"messages": messages}
+
+@api_router.post("/campaigns/{campaign_id}/schedule")
+async def schedule_campaign_sends(campaign_id: str, current_user: User = Depends(get_current_user)):
+    """Create send jobs for all leads in campaign"""
+    campaign = await db.campaigns.find({"id": campaign_id, "user_id": current_user.id})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    lead_ids = campaign.get("lead_ids", [])
+    
+    scheduler = CampaignScheduler(db)
+    result = await scheduler.schedule_campaign_messages(campaign_id, lead_ids)
+    
+    return result
+
+@api_router.post("/messages/rescore")
+async def rescore_message(message_id: str, current_user: User = Depends(get_current_user)):
+    """Re-score existing message for quality audit"""
+    message = await db.generated_messages.find_one({"id": message_id})
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    # Get context
+    lead = await db.leads.find_one({"id": message["lead_id"]})
+    campaign = await db.campaigns.find_one({"id": message["campaign_id"]})
+    
+    context = {
+        "persona": lead.get("persona", "") if lead else "",
+        "product_name": campaign.get("product_info", {}).get("name", "") if campaign else "",
+        "purpose": "outreach"
+    }
+    
+    llm_key = os.getenv("EMERGENT_LLM_KEY")
+    ai_generator = EnhancedAIMessageGenerator(llm_key)
+    
+    scores = await ai_generator.rescore_message(message["body"], context)
+    
+    # Update message with new scores
+    await db.generated_messages.update_one(
+        {"id": message_id},
+        {"$set": {
+            "ai_score_clarity": scores.get("clarity_score"),
+            "ai_score_personalization": scores.get("personalization_score"),
+            "ai_score_relevance": scores.get("relevance_score"),
+            "ai_score_total": scores.get("total_score")
+        }}
+    )
+    
+    return scores
+
 # ============ PHANTOMBUSTER INTEGRATION ============
 
 @api_router.get("/phantombuster/agents")
