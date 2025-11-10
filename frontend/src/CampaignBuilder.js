@@ -686,6 +686,46 @@ const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, 
           )}
         </div>
 
+        <div className="form-group">
+          <label className="form-label">Main Features (AI-extracted)</label>
+          {editingCampaign ? (
+            <div className="features-list-editor">
+              {(productInfo.main_features || []).map((feature, idx) => (
+                <div key={idx} className="feature-item">
+                  <input
+                    type="text"
+                    value={feature}
+                    onChange={(e) => {
+                      const newFeatures = [...(productInfo.main_features || [])];
+                      newFeatures[idx] = e.target.value;
+                      updateProductInfo('main_features', newFeatures);
+                    }}
+                    className="input"
+                    placeholder={`Feature ${idx + 1}`}
+                  />
+                </div>
+              ))}
+              {(productInfo.main_features || []).length === 0 && (
+                <div className="display-value" style={{ fontStyle: 'italic', color: '#888' }}>
+                  Upload a document to auto-extract features
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="display-value">
+              {productInfo.main_features && productInfo.main_features.length > 0 ? (
+                <ul style={{ paddingLeft: '1.5rem', margin: 0 }}>
+                  {productInfo.main_features.map((feature, idx) => (
+                    <li key={idx}>{feature}</li>
+                  ))}
+                </ul>
+              ) : (
+                'Not set'
+              )}
+            </div>
+          )}
+        </div>
+
         {editingCampaign && (
           <button onClick={onSave} className="btn-primary">
             💾 Save Changes
