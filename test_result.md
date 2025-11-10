@@ -170,6 +170,18 @@ backend:
         comment: "Backend receives lead_limit parameter in PATCH /api/campaigns/{campaign_id} endpoint. Frontend sends lead_limit in assignLeads function."
 
 frontend:
+  - task: "Best Practices Upload UI per Step (Task 2)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/CampaignBuilder.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created BestPracticesUpload component. Added upload section in each step card under Message Steps tab. Shows uploaded file and preview. Supports file replacement."
+
   - task: "AI Auto-Fill Product Info UI (Task 1)"
     implemented: true
     working: "NA"
