@@ -876,6 +876,16 @@ const StepsBuilder = ({ campaign, onAddStep, onUpdateVariant, onSaveStep, leads,
                     placeholder="E.g., Keep under 100 words, end with question, mention specific pain point..."
                   />
                 </div>
+
+                <div className="timing-group">
+                  <label>📄 Upload Messaging Best Practices (PDF/DOCX)</label>
+                  <BestPracticesUpload 
+                    stepId={step.id}
+                    campaignId={campaign.id}
+                    existingFile={step.best_practices_file}
+                    preview={step.best_practices_context ? step.best_practices_context.substring(0, 200) : null}
+                  />
+                </div>
               </div>
 
               {/* A/B Variants */}
