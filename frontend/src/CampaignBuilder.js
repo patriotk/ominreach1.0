@@ -227,10 +227,13 @@ export const CampaignBuilder = () => {
     }
   };
 
-  const assignLeads = async (selectedLeadIds) => {
+  const assignLeads = async (selectedLeadIds, leadLimit) => {
     try {
-      await api.patch(`/campaigns/${campaignId}`, { lead_ids: selectedLeadIds });
-      toast.success(`${selectedLeadIds.length} leads assigned!`);
+      await api.patch(`/campaigns/${campaignId}`, { 
+        lead_ids: selectedLeadIds,
+        lead_limit: leadLimit
+      });
+      toast.success(`${selectedLeadIds.length} leads assigned (limit: ${leadLimit})!`);
       fetchCampaign();
     } catch (error) {
       toast.error('Failed to assign leads');
