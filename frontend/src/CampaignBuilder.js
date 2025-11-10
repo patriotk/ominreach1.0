@@ -532,11 +532,35 @@ const ProductInfoEditor = ({ campaign, onSave, campaignEdits, setCampaignEdits, 
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      toast.success('Document uploaded and parsed!');
+      const aiFields = response.data.ai_extracted_fields;
       
-      // Update local state
-      updateProductInfo('file_urls', [...(productInfo.file_urls || []), file.name]);
-      updateProductInfo('parsed_content', response.data.preview);
+      if (response.data.auto_filled && aiFields) {
+        toast.success('✨ Document analyzed! Fields auto-filled with AI');
+        
+        // Auto-fill all fields from AI extraction
+        setCampaignEdits({
+          ...campaignEdits,
+          product_info: {
+            ...productInfo,
+            file_urls: [...(productInfo.file_urls || []), file.name],
+            parsed_content: response.data.preview,
+            name: aiFields.product_name || productInfo.name || '',
+            summary: aiFields.product_summary || productInfo.summary || '',
+            differentiators: aiFields.key_differentiators?.join('\n') || productInfo.differentiators || '',
+            cta: aiFields.call_to_action || productInfo.cta || '',
+            main_features: aiFields.main_features || productInfo.main_features || []
+          }
+        });
+        
+        // Enable editing mode so user can see and modify AI-filled fields
+        setEditingCampaign(true);
+      } else {
+        toast.success('Document uploaded and parsed!');
+        
+        // Update local state without AI data
+        updateProductInfo('file_urls', [...(productInfo.file_urls || []), file.name]);
+        updateProductInfo('parsed_content', response.data.preview);
+      }
       
     } catch (error) {
       toast.error('Upload failed');
