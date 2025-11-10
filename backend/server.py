@@ -204,6 +204,7 @@ class CreateAgentProfileRequest(BaseModel):
 class GenerateAllMessagesRequest(BaseModel):
     campaign_id: str
     generate_variants: bool = True  # Generate 3 variants per step
+    lead_limit: int = 100  # Number of leads to process
 
 class AIAgentConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
