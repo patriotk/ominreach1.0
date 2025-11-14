@@ -437,17 +437,6 @@ async def quick_login(email: str, response: Response):
         "session_token": session_token
     }
 
-    )
-    
-    return {
-        "id": user.id,
-        "email": user.email,
-        "name": user.name,
-        "picture": user.picture,
-        "role": user.role,
-        "session_token": session_token
-    }
-
 @api_router.get("/auth/me")
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
