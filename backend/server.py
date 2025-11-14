@@ -381,6 +381,53 @@ async def get_session_data(request: Request, response: Response):
         samesite="none",
         max_age=7*24*60*60,
         path="/"
+
+
+@api_router.post("/auth/quick-login")
+async def quick_login(email: str, response: Response):
+    """Quick login for testing - creates session directly"""
+    # Get or create user
+    user = await db.users.find_one({"email": email})
+    
+    if not user:
+        user_id = str(uuid.uuid4())
+        user_doc = {
+            "id": user_id,
+            "email": email,
+            "name": email.split('@')[0].title(),
+            "role": "admin",
+            "picture": "https://via.placeholder.com/150",
+            "created_at": datetime.now(timezone.utc),
+            "credits": 10000
+        }
+        await db.users.insert_one(user_doc)
+        user = user_doc
+    
+    # Delete old sessions
+    await db.user_sessions.delete_many({"user_id": user["id"]})
+    
+    # Create new session
+    session_token = f"session_{uuid.uuid4().hex}"
+    expires_at = datetime.now(timezone.utc) + timedelta(days=365)
+    
+    session_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "session_token": session_token,
+        "expires_at": expires_at,
+        "created_at": datetime.now(timezone.utc)
+    }
+    
+    await db.user_sessions.insert_one(session_doc)
+    
+    return {
+        "id": user["id"],
+        "email": user["email"],
+        "name": user["name"],
+        "role": user["role"],
+        "session_token": session_token
+    }
+
     )
     
     return {
