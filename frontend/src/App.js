@@ -4,6 +4,7 @@ import axios from "axios";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { CampaignBuilder } from "./CampaignBuilder";
+import { CampaignBuilderV2 } from "./CampaignBuilderV2";
 import { AIAgentStudio } from "./AIAgentStudio";
 import { PhantombusterImport } from "./PhantombusterImport";
 import { BulkLeadEnrichment } from "./BulkLeadEnrichment";
