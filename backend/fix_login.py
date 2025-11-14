@@ -8,7 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 async def fix_login():
     mongo_url = "mongodb://localhost:27017"
     client = AsyncIOMotorClient(mongo_url)
-    db = client['omnireach']
+    db = client['test_database']
     
     email = "patriot@liquidsmarts.com"
     
