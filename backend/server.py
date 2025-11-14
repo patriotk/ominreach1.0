@@ -288,8 +288,14 @@ async def get_current_user(request: Request, session_token: Optional[str] = Cook
     if not session:
         raise HTTPException(status_code=401, detail="Session expired")
     
-    # Handle both naive and aware datetimes
+    # Handle both naive and aware datetimes, and ISO strings
     expires_at = session["expires_at"]
+    
+    # Convert ISO string to datetime if needed
+    if isinstance(expires_at, str):
+        from dateutil import parser as date_parser
+        expires_at = date_parser.isoparse(expires_at)
+    
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
     
