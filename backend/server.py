@@ -2683,6 +2683,18 @@ async def import_leads_from_data(leads_data: List[Dict], user_id: str) -> int:
 # Include the router in the main app
 app.include_router(api_router)
 
+# Include Campaign V2 router
+from campaign_v2_routes import campaign_v2_router
+import campaign_v2_routes
+from campaign_v2_service import CampaignServiceV2
+
+# Initialize Campaign V2 service
+campaign_v2_routes.campaign_service = CampaignServiceV2(db)
+campaign_v2_routes.ai_analyzer = AIProductAnalyzer()
+
+# Include Campaign V2 routes
+app.include_router(campaign_v2_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
