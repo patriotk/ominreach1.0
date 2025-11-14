@@ -381,7 +381,16 @@ async def get_session_data(request: Request, response: Response):
         samesite="none",
         max_age=7*24*60*60,
         path="/"
-
+    )
+    
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "picture": user.picture,
+        "role": user.role,
+        "session_token": session_token
+    }
 
 @api_router.post("/auth/quick-login")
 async def quick_login(email: str, response: Response):
