@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { CampaignBuilder } from "./CampaignBuilder";
 import { CampaignBuilderV2 } from "./CampaignBuilderV2";
+import { CampaignsV2Page } from "./CampaignsV2Page";
 import { AIAgentStudio } from "./AIAgentStudio";
 import { PhantombusterImport } from "./PhantombusterImport";
 import { BulkLeadEnrichment } from "./BulkLeadEnrichment";
