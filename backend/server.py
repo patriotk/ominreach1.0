@@ -2173,9 +2173,20 @@ async def create_agent_profile(profile_data: CreateAgentProfileRequest, current_
 
 @api_router.get("/ai-agent-profiles")
 async def list_agent_profiles(current_user: User = Depends(get_current_user)):
-    """List all AI agent profiles for user"""
-    profiles = await db.ai_agent_profiles.find({"user_id": current_user.id}, {"_id": 0}).to_list(100)
-    return profiles
+    """List all AI agent profiles for user (deduplicated by name)"""
+    all_profiles = await db.ai_agent_profiles.find({"user_id": current_user.id}, {"_id": 0}).to_list(1000)
+    
+    # Deduplicate by name - keep only the first occurrence
+    seen_names = set()
+    unique_profiles = []
+    
+    for profile in all_profiles:
+        profile_name = profile.get("name", "")
+        if profile_name not in seen_names:
+            seen_names.add(profile_name)
+            unique_profiles.append(profile)
+    
+    return unique_profiles
 
 @api_router.post("/campaigns/{campaign_id}/upload-product-doc")
 async def upload_product_document(
