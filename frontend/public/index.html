@@ -1,84 +1,15 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>OmniReach AI - Login</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: Arial, sans-serif;
-            background: #0a0a0b;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-        .container {
-            background: #1a1a2e;
-            padding: 60px;
-            border-radius: 20px;
-            text-align: center;
-            max-width: 500px;
-            width: 90%;
-        }
-        h1 {
-            color: #93c5fd;
-            font-size: 3em;
-            margin-bottom: 20px;
-        }
-        button {
-            background: linear-gradient(135deg, #93c5fd, #c4b5fd);
-            color: #0a0a0b;
-            padding: 20px 50px;
-            border: none;
-            border-radius: 12px;
-            font-size: 22px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin: 15px 0;
-        }
-        button:hover {
-            transform: scale(1.05);
-        }
-        #msg {
-            margin-top: 25px;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 18px;
-        }
-        .ok { background: rgba(34, 197, 94, 0.3); color: #86efac; }
-        .err { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🚀 LOGIN</h1>
-        <button onclick="go()">CLICK TO LOGIN</button>
-        <div id="msg"></div>
-    </div>
-    <script>
-        function go() {
-            const m = document.getElementById('msg');
-            m.textContent = 'Logging in...';
-            m.className = '';
-            
-            localStorage.setItem('session_token', 'patriot_working_session');
-            localStorage.setItem('user', JSON.stringify({
-                id: 'user-patriot-1762275399425',
-                email: 'patriot@liquidsmarts.com',
-                name: 'Patriot',
-                role: 'admin'
-            }));
-            
-            m.textContent = '✅ SUCCESS';
-            m.className = 'ok';
-            
-            setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 300);
-        }
-    </script>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="OmniReach AI - Multi-channel outreach platform" />
+    <title>OmniReach AI</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
 </html>
