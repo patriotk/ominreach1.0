@@ -2112,8 +2112,10 @@ async def send_outreach(campaign_id: str, lead_ids: List[str], variant_id: str, 
 @api_router.post("/ai-agent-profiles")
 async def create_agent_profile(profile_data: CreateAgentProfileRequest, current_user: User = Depends(get_current_user)):
     """Create AI agent profile for message generation"""
+    profile_id = str(uuid.uuid4())
     profile = {
-        "id": str(uuid.uuid4()),
+        "id": profile_id,
+        "user_id": current_user.id,
         "name": profile_data.name,
         "tone": profile_data.tone,
         "style": profile_data.style,
@@ -2123,12 +2125,26 @@ async def create_agent_profile(profile_data: CreateAgentProfileRequest, current_
         "model_provider": profile_data.model_provider,
         "model_name": profile_data.model_name,
         "temperature": profile_data.temperature,
-        "user_id": current_user.id,
-        "created_at": datetime.now(timezone.utc)
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
     
     await db.ai_agent_profiles.insert_one(profile)
-    return profile
+    
+    # Return without _id field
+    return {
+        "id": profile_id,
+        "user_id": current_user.id,
+        "name": profile_data.name,
+        "tone": profile_data.tone,
+        "style": profile_data.style,
+        "focus": profile_data.focus,
+        "avoid_words": profile_data.avoid_words,
+        "brand_personality": profile_data.brand_personality,
+        "model_provider": profile_data.model_provider,
+        "model_name": profile_data.model_name,
+        "temperature": profile_data.temperature,
+        "created_at": profile["created_at"]
+    }
 
 @api_router.get("/ai-agent-profiles")
 async def list_agent_profiles(current_user: User = Depends(get_current_user)):
