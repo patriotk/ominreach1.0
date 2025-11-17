@@ -2111,7 +2111,32 @@ async def send_outreach(campaign_id: str, lead_ids: List[str], variant_id: str, 
 
 @api_router.post("/ai-agent-profiles")
 async def create_agent_profile(profile_data: CreateAgentProfileRequest, current_user: User = Depends(get_current_user)):
-    """Create AI agent profile for message generation"""
+    """Create AI agent profile for message generation (checks for duplicates)"""
+    
+    # Check if profile with same name already exists for this user
+    existing = await db.ai_agent_profiles.find_one({
+        "user_id": current_user.id,
+        "name": profile_data.name
+    })
+    
+    if existing:
+        # Return existing profile instead of creating duplicate
+        return {
+            "id": existing["id"],
+            "user_id": existing["user_id"],
+            "name": existing["name"],
+            "tone": existing["tone"],
+            "style": existing["style"],
+            "focus": existing["focus"],
+            "avoid_words": existing["avoid_words"],
+            "brand_personality": existing["brand_personality"],
+            "model_provider": existing.get("model_provider", "openai"),
+            "model_name": existing.get("model_name", "gpt-5"),
+            "temperature": existing.get("temperature", 0.7),
+            "created_at": existing["created_at"]
+        }
+    
+    # Create new profile
     profile_id = str(uuid.uuid4())
     profile = {
         "id": profile_id,
