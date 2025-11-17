@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0a0a0b;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .box {
+            background: #1a1a2e;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 { margin-bottom: 20px; }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover { background: #45a049; }
+        #msg { margin-top: 20px; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>Login</h1>
+        <button onclick="login()">LOGIN AS PATRIOT</button>
+        <div id="msg"></div>
+    </div>
+
+    <script>
+        async function login() {
+            const msg = document.getElementById('msg');
+            msg.innerHTML = 'Logging in...';
+            
+            try {
+                const res = await fetch('/api/auth/quick-login?email=patriot@liquidsmarts.com', {
+                    method: 'POST'
+                });
+                
+                const data = await res.json();
+                
+                localStorage.setItem('session_token', data.session_token);
+                localStorage.setItem('user', JSON.stringify({
+                    id: data.id,
+                    email: data.email,
+                    name: data.name,
+                    role: data.role
+                }));
+                
+                msg.innerHTML = 'SUCCESS! Redirecting...';
+                window.location.href = '/dashboard';
+                
+            } catch (e) {
+                msg.innerHTML = 'ERROR: ' + e.message;
+            }
+        }
+    </script>
+</body>
+</html>
